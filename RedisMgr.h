@@ -12,20 +12,20 @@ class RedisMgr : public Singleton<RedisMgr>
 
 public:
     ~RedisMgr();
-    bool Connect(const std::string& host, int port);
-    bool Get(const std::string& key, std::string& value);
-    bool Set(const std::string& key, const std::string& value);
-    bool Auth(const std::string& password);
-    bool LPush(const std::string& key, const std::string& value);
-    bool LPop(const std::string& key, std::string& value);
-    bool RPush(const std::string& key, const std::string& value);
-    bool RPop(const std::string& key, std::string& value);
-    bool HSet(const std::string& key, const std::string& hkey, const std::string& value);
-    bool HSet(const char* key, const char* hkey, const char* hvalue, size_t hvaluelen);
-    std::string HGet(const std::string& key, const std::string& hkey);
-    bool Del(const std::string& key);
-    bool ExistsKey(const std::string& key);
-    void Close();
+    bool connect(const std::string& host, int port);
+    bool get(const std::string& key, std::string& value);
+    bool set(const std::string& key, const std::string& value);
+    bool auth(const std::string& password);
+    bool lPush(const std::string& key, const std::string& value);
+    bool lPop(const std::string& key, std::string& value);
+    bool rPush(const std::string& key, const std::string& value);
+    bool rPop(const std::string& key, std::string& value);
+    bool hSet(const std::string& key, const std::string& hkey, const std::string& value);
+    bool hSet(const char* key, const char* hkey, const char* hvalue, size_t hvaluelen);
+    std::string hGet(const std::string& key, const std::string& hkey);
+    bool del(const std::string& key);
+    bool existsKey(const std::string& key);
+    void close();
 
 private:
     RedisMgr();

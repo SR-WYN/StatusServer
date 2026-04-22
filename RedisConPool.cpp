@@ -4,7 +4,7 @@
 #include <hiredis/read.h>
 
 RedisConPool::RedisConPool(size_t poolSize, const char* host, int port, const char* pwd)
-    : _poolSize(poolSize),
+    : _pool_size(poolSize),
       _host(host),
       _port(port),
       _b_stop(false),
@@ -12,7 +12,7 @@ RedisConPool::RedisConPool(size_t poolSize, const char* host, int port, const ch
       _counter(0),
       _fail_count(0)
 {
-    for (size_t i = 0; i < _poolSize; ++i)
+    for (size_t i = 0; i < _pool_size; ++i)
     {
         auto* context = redisConnect(host, port);
         if (context == nullptr || context->err != 0)
@@ -60,11 +60,11 @@ RedisConPool::RedisConPool(size_t poolSize, const char* host, int port, const ch
 
 RedisConPool::~RedisConPool()
 {
-    Close();
-    ClearConnections();
+    close();
+    clearConnections();
 }
 
-void RedisConPool::ClearConnections()
+void RedisConPool::clearConnections()
 {
     std::lock_guard<std::mutex> lock(_mutex);
     while (!_connections.empty())
@@ -75,7 +75,7 @@ void RedisConPool::ClearConnections()
     }
 }
 
-redisContext* RedisConPool::GetConnection()
+redisContext* RedisConPool::getConnection()
 {
     std::unique_lock<std::mutex> lock(_mutex);
     _cond.wait(lock,
@@ -96,7 +96,7 @@ redisContext* RedisConPool::GetConnection()
     return context;
 }
 
-redisContext* RedisConPool::GetConNonBlock()
+redisContext* RedisConPool::getConNonBlock()
 {
     std::unique_lock<std::mutex> lock(_mutex);
     if (_b_stop)
@@ -112,7 +112,7 @@ redisContext* RedisConPool::GetConNonBlock()
     return context;
 }
 
-void RedisConPool::ReturnConnection(redisContext* context)
+void RedisConPool::returnConnection(redisContext* context)
 {
     std::lock_guard<std::mutex> lock(_mutex);
     if (_b_stop)
@@ -123,7 +123,7 @@ void RedisConPool::ReturnConnection(redisContext* context)
     _cond.notify_one();
 }
 
-void RedisConPool::Close()
+void RedisConPool::close()
 {
     _b_stop = true;
     _cond.notify_all();
@@ -173,7 +173,7 @@ void RedisConPool::checkThreadPro()
     }
     for (int i = 0; i < poolSize && !_b_stop; i++)
     {
-        auto* context = GetConNonBlock();
+        auto* context = getConNonBlock();
         if (context == nullptr)
         {
             break;
@@ -202,7 +202,7 @@ void RedisConPool::checkThreadPro()
             continue;
         }
         freeReplyObject(reply);
-        ReturnConnection(context);
+        returnConnection(context);
     }
     while (_fail_count > 0)
     {

@@ -31,18 +31,18 @@ class MySqlPool
 public:
     MySqlPool(const std::string& url, const std::string& user, const std::string& pass,
               const std::string& schema, int poolSize);
-    std::unique_ptr<SqlConnection> GetConnection();
-    void ReturnConnection(std::unique_ptr<SqlConnection> con);
-    void Close();
+    std::unique_ptr<SqlConnection> getConnection();
+    void returnConnection(std::unique_ptr<SqlConnection> con);
+    void close();
     ~MySqlPool();
-    void CheckConnection();
+    void checkConnection();
     bool reconnect(long long timestamp);
 private:
     std::string _url;
     std::string _user;
     std::string _pass;
     std::string _schema;
-    int _poolSize;
+    int _pool_size;
     std::queue<std::unique_ptr<SqlConnection>> _pool;
     std::mutex _mutex;
     std::condition_variable _cond;

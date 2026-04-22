@@ -12,17 +12,17 @@ class RedisConPool
 public:
     RedisConPool(size_t poolSize, const char* host, int port, const char* pwd);
     ~RedisConPool();
-    void ClearConnections();
-    redisContext* GetConnection();
-    redisContext* GetConNonBlock();
-    void ReturnConnection(redisContext* context);
-    void Close();
+    void clearConnections();
+    redisContext* getConnection();
+    redisContext* getConNonBlock();
+    void returnConnection(redisContext* context);
+    void close();
 
 private:
     bool reconnect();
     void checkThreadPro();
     std::atomic<bool> _b_stop;
-    size_t _poolSize;
+    size_t _pool_size;
     std::string _host;
     std::string _pwd;
     int _port;

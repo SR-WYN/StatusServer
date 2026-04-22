@@ -16,13 +16,13 @@ MySqlPool::MySqlPool(const std::string& url, const std::string& user, const std:
       _user(user),
       _pass(pass),
       _schema(schema),
-      _poolSize(poolSize),
+      _pool_size(poolSize),
       _b_stop(false),
       _fail_count(0)
 {
     try
     {
-        for (int i = 0; i < _poolSize; i++)
+        for (int i = 0; i < _pool_size; i++)
         {
             sql::mysql::MySQL_Driver* driver = sql::mysql::get_mysql_driver_instance();
             auto* con = driver->connect(_url, _user, _pass);
@@ -39,7 +39,7 @@ MySqlPool::MySqlPool(const std::string& url, const std::string& user, const std:
             {
                 while (!_b_stop)
                 {
-                    CheckConnection();
+                    checkConnection();
                     std::this_thread::sleep_for(std::chrono::seconds(60));
                 }
             });
@@ -50,7 +50,7 @@ MySqlPool::MySqlPool(const std::string& url, const std::string& user, const std:
     }
 }
 
-void MySqlPool::CheckConnection()
+void MySqlPool::checkConnection()
 {
     size_t targetCount;
     {
@@ -140,7 +140,7 @@ bool MySqlPool::reconnect(long long timestamp)
     }
 }
 
-std::unique_ptr<SqlConnection> MySqlPool::GetConnection()
+std::unique_ptr<SqlConnection> MySqlPool::getConnection()
 {
     std::unique_lock<std::mutex> lock(_mutex);
     _cond.wait(lock,
@@ -161,7 +161,7 @@ std::unique_ptr<SqlConnection> MySqlPool::GetConnection()
     return con;
 }
 
-void MySqlPool::ReturnConnection(std::unique_ptr<SqlConnection> con)
+void MySqlPool::returnConnection(std::unique_ptr<SqlConnection> con)
 {
     std::lock_guard<std::mutex> lock(_mutex);
     if (_b_stop)
@@ -172,7 +172,7 @@ void MySqlPool::ReturnConnection(std::unique_ptr<SqlConnection> con)
     _cond.notify_one();
 }
 
-void MySqlPool::Close()
+void MySqlPool::close()
 {
     std::lock_guard<std::mutex> lock(_mutex);
     _b_stop = true;

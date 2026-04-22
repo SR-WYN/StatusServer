@@ -11,13 +11,13 @@
 #include <thread>
 #include <grpcpp/grpcpp.h>
 
-void RunServer();
+void runServer();
 
 int main(int argc, char** argv)
 {
     try
     {
-        RunServer();
+        runServer();
     }
     catch (std::exception const& e)
     {
@@ -27,9 +27,9 @@ int main(int argc, char** argv)
     return 0;
 }
 
-void RunServer()
+void runServer()
 {
-    auto& cfg = ConfigMgr::GetInstance();
+    auto& cfg = ConfigMgr::getInstance();
     std::string server_address(cfg["StatusServer"]["Host"] + ":" + cfg["StatusServer"]["Port"]);
     StatusServiceImpl service;
     grpc::ServerBuilder builder;

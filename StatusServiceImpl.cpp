@@ -19,7 +19,7 @@ Status StatusServiceImpl::GetChatServer(ServerContext* context, const GetChatSer
 StatusServiceImpl::StatusServiceImpl()
     : _server_index(0)
 {
-    auto& cfg = ConfigMgr::GetInstance();
+    auto& cfg = ConfigMgr::getInstance();
     ChatServer server;
     server.port = cfg["ChatServer1"]["Port"];
     server.host = cfg["ChatServer1"]["Host"];
