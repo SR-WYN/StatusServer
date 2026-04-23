@@ -6,9 +6,19 @@
 Status StatusServiceImpl::GetChatServer(ServerContext* context, const GetChatServerReq* request,
                                         GetChatServerRsp* reply)
 {
-    std::string prefix("loadbalancer status server has received :  ");
-    _server_index = (_server_index++) % (_servers.size());
+    (void)context;
+    (void)request;
+
+    std::lock_guard<std::mutex> lock(_server_mutex);
+    if (_servers.empty())
+    {
+        reply->set_error(ErrorCodes::RPCFAILED);
+        return Status::OK;
+    }
+
+    // 先取当前索引，再将索引向后轮询推进。
     auto& server = _servers[_server_index];
+    _server_index = (_server_index + 1) % static_cast<int>(_servers.size());
     reply->set_host(server.host);
     reply->set_port(server.port);
     reply->set_error(ErrorCodes::SUCCESS);

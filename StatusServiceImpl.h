@@ -3,6 +3,7 @@
 #include "grpcpp/grpcpp.h"
 #include "message.grpc.pb.h"
 #include "message.pb.h"
+#include <mutex>
 
 using grpc::ServerContext;
 using grpc::Status;
@@ -26,4 +27,5 @@ public:
 
     std::vector<ChatServer> _servers;
     int _server_index;
+    std::mutex _server_mutex;
 };
