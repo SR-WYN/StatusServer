@@ -1,58 +1,36 @@
----
-# 基础风格采用主流的 LLVM
 BasedOnStyle: LLVM
-
-# --- 核心缩进与排版 ---
 IndentWidth: 4
 TabWidth: 4
-UseTab: Never
+
+# 使用自定义的换行风格
+BreakBeforeBraces: Custom
+BraceWrapping:
+  # 这里是核心：设置为 false，Lambda 的左括号就不会另起一行
+  BeforeLambdaBody: false
+  
+  # 以下是 Allman 风格的其他标准配置（为了保持你想要的其他大括号另起一行）
+  AfterCaseLabel: true
+  AfterClass: true
+  AfterControlStatement: Always
+  AfterEnum: true
+  AfterFunction: true
+  AfterNamespace: true
+  AfterStruct: true
+  AfterUnion: true
+  AfterExternBlock: true
+  BeforeElse: true
+  BeforeCatch: true
+
+# 强制单行函数、控制语句换行
+AllowShortFunctionsOnASingleLine: None
+AllowShortBlocksOnASingleLine: false
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+AllowShortLambdasOnASingleLine: None
+
+# 针对 Qt 优化的细节
+AccessModifierOffset: -4
 ColumnLimit: 100
 
-# --- 大括号换行策略 (Allman 风格) ---
-BreakBeforeBraces: Allman
-
-# --- 强制换行，禁止短单行语句 ---
-# 禁止函数写在一行
-AllowShortFunctionsOnASingleLine: None
-# 禁止控制语句 (if/while/for) 的代码块写在一行
-AllowShortBlocksOnASingleLine: false
-# 禁止 if (a) return; 这种写法
-AllowShortIfStatementsOnASingleLine: false
-# 禁止循环写在一行
-AllowShortLoopsOnASingleLine: false
-# 禁止 Lambda 表达式合并为一行
-AllowShortLambdasOnASingleLine: None
-# 强制模板声明 (template <...>) 后换行
+# 强制模板声明后换行
 AlwaysBreakTemplateDeclarations: Yes
-
-# --- 现代 C++ 主流细节优化 ---
-
-# 指针和引用的对齐：靠左 (int* p) 还是靠右 (int *p)？
-# 后端开发中，靠左 (Left) 是目前更主流的现代 C++ 风格
-PointerAlignment: Left
-
-# 访问修饰符 (public/private) 缩进
-# 设置为 -4 则与 class 对齐，设置为 0 则缩进 4 格
-AccessModifierOffset: -4
-
-# 允许在赋值时连续对齐（可选，根据喜好决定是否注释掉）
-AlignConsecutiveAssignments: false
-
-# 构造函数初始化列表的对齐策略
-# 这样写更清晰：
-# MyClass()
-#     : a(1)
-#     , b(2)
-ConstructorInitializerIndentWidth: 4
-# 尝试每行一个初始化成员
-PackConstructorInitializers: Never
-
-# 排序头文件（自动按字母顺序排列，防止混乱）
-SortIncludes: true
-
-# 空间处理：在括号中不添加空格，保持紧凑
-SpacesInContainerLiterals: false
-SpaceBeforeParens: ControlStatements # 只有 if/for 后面有空格，函数名后面没有
-
-# 自动在 namespace 结尾添加注释，方便查看大括号匹配
-FixNamespaceComments: true

@@ -18,14 +18,6 @@ public:
     int64_t _last_oper_time;
 };
 
-struct UserInfo
-{
-    std::string name;
-    std::string pwd;
-    int uid;
-    std::string email;
-};
-
 class MySqlPool
 {
 public:
