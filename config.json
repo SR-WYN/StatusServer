@@ -5,7 +5,7 @@
   },
   "ChatServer2": {
     "Host": "127.0.0.1",
-    "Port": 8091
+    "Port": 8090
   },
   "MySql": {
     "Host": "127.0.0.1",
