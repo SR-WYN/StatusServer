@@ -31,6 +31,8 @@ enum ErrorCodes
     PASSWD_UP_FAILED = 1008,// 密码更新失败
     PASSWD_INVALID = 1009,// 密码无效
     PASSWD_NOT_MATCH = 1010,// 密码不匹配
+    UID_INVALID = 1011,    // 用户不存在
+    TOKEN_INVALID = 1012,    // 令牌无效
 };
 
 namespace RedisPrefix {
