@@ -4,6 +4,7 @@
 #include "message.grpc.pb.h"
 #include "message.pb.h"
 #include <mutex>
+#include <vector>
 
 using grpc::ServerContext;
 using grpc::Status;
@@ -26,6 +27,7 @@ public:
                          GetChatServerRsp* reply) override;
 
     std::vector<ChatServer> _servers;
-    int _server_index;
+    /// Per-server count used for least-connections pick (incremented on each successful dispatch).
+    std::vector<int> _connection_counts;
     std::mutex _server_mutex;
 };
