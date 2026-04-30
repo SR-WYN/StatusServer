@@ -76,6 +76,8 @@ set(SOURCE_FILES
     RedisMgr.cpp
     utils.cpp
     StatusServiceImpl.cpp
+    ChatGrpcClient.cpp
+    ChatConPool.cpp
 )
 
 # --- 4. 定义生成目标 ---

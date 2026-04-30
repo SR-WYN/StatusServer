@@ -4,8 +4,9 @@
 #include "message.grpc.pb.h"
 #include "message.pb.h"
 #include <grpcpp/server_context.h>
+#include <map>
 #include <mutex>
-#include <vector>
+#include <unordered_map>
 
 using grpc::ServerContext;
 using grpc::Status;
@@ -18,8 +19,10 @@ using message::LoginRsp;
 
 struct ChatServer
 {
+    std::string name;
     std::string host;
     std::string port;
+    int con_count;
 };
 
 class StatusServiceImpl final : public StatusService::Service
@@ -32,9 +35,6 @@ public:
 private:
     void insertToken(int uid,const std::string& token);
     ChatServer getChatServer();
-    std::vector<ChatServer> _servers;
-    std::unordered_map<int, std::string> _tokens;
-    std::vector<int> _connection_counts;
+    std::map<std::string, ChatServer> _servers;
     std::mutex _server_mutex;
-    std::mutex _token_mutex;
 };

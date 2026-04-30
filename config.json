@@ -1,11 +1,16 @@
 {
+  "ChatServers": {
+    "Name": "ChatServer1,ChatServer2"
+  },
   "ChatServer1": {
+    "Name": "ChatServer1",
     "Host": "127.0.0.1",
     "Port": 8090
   },
   "ChatServer2": {
+    "Name": "ChatServer2",
     "Host": "127.0.0.1",
-    "Port": 8090
+    "Port": 8091
   },
   "MySql": {
     "Host": "127.0.0.1",
