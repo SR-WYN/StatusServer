@@ -1,0 +1,2 @@
+add_library(statusserver_app_dir INTERFACE)
+target_link_libraries(statusserver_app_dir INTERFACE statusserver_includes)
