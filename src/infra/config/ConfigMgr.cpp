@@ -1,4 +1,6 @@
 #include "ConfigMgr.h"
+#include <algorithm>
+#include <cctype>
 #include <fstream>
 #include <iostream>
 
@@ -37,9 +39,8 @@ std::string SectionInfo::operator[](const std::string& key)
 
 ConfigMgr::ConfigMgr()
 {
-    // 获取当前工作目录并构建配置文件路径
-    boost::filesystem::path current_path = boost::filesystem::current_path();
-    boost::filesystem::path config_path = current_path / "config.json";
+    const boost::filesystem::path config_path =
+        boost::filesystem::current_path() / "config.json";
 
 
     std::ifstream file(config_path.string());
@@ -72,10 +73,66 @@ ConfigMgr::ConfigMgr()
         }
     }
 
-    // 打印加载结果用于验证
-    for (const auto& pair : _config_map)
+    loadLogConfig();
+}
+
+namespace
+{
+spdlog::level::level_enum parseLogLevel(const std::string& level_str)
+{
+    std::string level = level_str;
+    std::transform(level.begin(), level.end(), level.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    if (level == "trace")
     {
+        return spdlog::level::trace;
     }
+    if (level == "debug")
+    {
+        return spdlog::level::debug;
+    }
+    if (level == "info")
+    {
+        return spdlog::level::info;
+    }
+    if (level == "warn" || level == "warning")
+    {
+        return spdlog::level::warn;
+    }
+    if (level == "error" || level == "err")
+    {
+        return spdlog::level::err;
+    }
+    if (level == "critical" || level == "fatal")
+    {
+        return spdlog::level::critical;
+    }
+    if (level == "off")
+    {
+        return spdlog::level::off;
+    }
+    return spdlog::level::info;
+}
+} // namespace
+
+void ConfigMgr::loadLogConfig()
+{
+    auto section = (*this)["Log"];
+    const std::string dir = section["Dir"];
+    if (!dir.empty())
+    {
+        _log_config._dir = dir;
+    }
+    const std::string level = section["Level"];
+    if (!level.empty())
+    {
+        _log_config._level = parseLogLevel(level);
+    }
+}
+
+LogConfig ConfigMgr::getLogConfig() const
+{
+    return _log_config;
 }
 
 ConfigMgr::~ConfigMgr()

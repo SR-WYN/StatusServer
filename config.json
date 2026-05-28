@@ -1,4 +1,8 @@
 {
+  "Log": {
+    "Dir": "/home/asus/NETLEARN/StatusServer/src/logdir",
+    "Level": "info"
+  },
   "MySql": {
     "Host": "127.0.0.1",
     "Port": "3307",

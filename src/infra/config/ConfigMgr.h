@@ -1,4 +1,5 @@
 #pragma once
+#include "Log.h"
 #include "Singleton.h"
 #include <boost/filesystem.hpp>
 #include <json/json.h>
@@ -29,8 +30,10 @@ public:
 
     // 重载 [] 运算符方便访问 Section
     SectionInfo operator[](const std::string& section);
+    LogConfig getLogConfig() const;
 
 private:
+    void loadLogConfig();
     // 私有构造函数，防止外部实例化
     ConfigMgr();
 
@@ -40,4 +43,5 @@ private:
 
     // 存储所有配置数据的 Map
     std::map<std::string, SectionInfo> _config_map;
+    LogConfig _log_config;
 };

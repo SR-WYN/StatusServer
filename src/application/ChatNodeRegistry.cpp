@@ -1,4 +1,5 @@
 #include "ChatNodeRegistry.h"
+#include "Log.h"
 #include "RedisMgr.h"
 #include "const.h"
 #include <chrono>
@@ -101,6 +102,10 @@ bool ChatNodeRegistry::registerNode(const RegisteredChatNode &node)
         return false;
     }
     redis.hSet(RedisPrefix::LOGIN_COUNT, node.name, "0");
+    Log::info(LogModule::Registry,
+              "registered chat node {} instance {}",
+              node.name,
+              node.instance_id);
     return true;
 }
 

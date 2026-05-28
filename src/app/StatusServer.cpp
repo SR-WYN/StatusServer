@@ -1,5 +1,6 @@
 #include "AsioIOServicePool.h"
 #include "ConfigMgr.h"
+#include "Log.h"
 #include "StatusServiceImpl.h"
 #include <boost/asio.hpp>
 #include <hiredis/hiredis.h>
@@ -21,6 +22,8 @@ int main(int argc, char** argv)
     }
     catch (std::exception const& e)
     {
+        Log::error(LogModule::App, "StatusServer exception: {}", e.what());
+        Log::shutdown();
         return EXIT_FAILURE;
     }
     return 0;
@@ -28,6 +31,13 @@ int main(int argc, char** argv)
 
 void runServer()
 {
+    ConfigMgr::getInstance();
+    if (!Log::init("StatusServer", ConfigMgr::getInstance().getLogConfig()))
+    {
+        return;
+    }
+    Log::info(LogModule::App, "StatusServer starting");
+
     auto& cfg = ConfigMgr::getInstance();
     std::string server_address(cfg["StatusServer"]["Host"] + ":" + cfg["StatusServer"]["Port"]);
     StatusServiceImpl service;
@@ -60,4 +70,6 @@ void runServer()
     // 等待服务器关闭
     server->Wait();
     io_context.stop(); // 停止io_context
+    Log::info(LogModule::App, "StatusServer stopped");
+    Log::shutdown();
 }
