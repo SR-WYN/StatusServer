@@ -11,7 +11,6 @@ target_include_directories(statusserver_includes INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/application
     ${CMAKE_CURRENT_SOURCE_DIR}/infra/config
     ${CMAKE_CURRENT_SOURCE_DIR}/infra/redis
-    ${CMAKE_CURRENT_SOURCE_DIR}/infra/mysql
     ${CMAKE_CURRENT_SOURCE_DIR}/infra/grpc
     ${PROTO_GEN_DIR}
 )
@@ -19,7 +18,6 @@ target_include_directories(statusserver_includes INTERFACE
 add_subdirectory(common)
 add_subdirectory(domain)
 add_subdirectory(infra/config)
-add_subdirectory(infra/mysql)
 add_subdirectory(infra/redis)
 add_subdirectory(infra/grpc)
 add_subdirectory(net)
@@ -47,7 +45,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     ss_common
     ss_config
     ss_redis
-    ss_mysql
     ss_grpc
     Boost::system
     Boost::thread
@@ -57,7 +54,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     gRPC::grpc++_reflection
     protobuf::libprotobuf
     hiredis
-    mysqlcppconn
 )
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
