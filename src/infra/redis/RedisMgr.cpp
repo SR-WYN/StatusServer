@@ -341,6 +341,133 @@ std::string RedisMgr::hGet(const std::string& key, const std::string& hkey)
     return value;
 }
 
+bool RedisMgr::hDel(const std::string& key, const std::string& hkey)
+{
+    auto connect = _con_pool->getConnection();
+    if (connect == nullptr)
+    {
+        return false;
+    }
+    auto reply = (redisReply*)redisCommand(connect, "HDEL %s %s", key.c_str(), hkey.c_str());
+    if (reply == nullptr || reply->type != REDIS_REPLY_INTEGER)
+    {
+        if (reply)
+        {
+            freeReplyObject(reply);
+        }
+        _con_pool->returnConnection(connect);
+        return false;
+    }
+    freeReplyObject(reply);
+    _con_pool->returnConnection(connect);
+    return true;
+}
+
+bool RedisMgr::hGetAll(const std::string& key, std::map<std::string, std::string>& out)
+{
+    out.clear();
+    auto connect = _con_pool->getConnection();
+    if (connect == nullptr)
+    {
+        return false;
+    }
+    auto reply = (redisReply*)redisCommand(connect, "HGETALL %s", key.c_str());
+    if (reply == nullptr || reply->type != REDIS_REPLY_ARRAY)
+    {
+        if (reply)
+        {
+            freeReplyObject(reply);
+        }
+        _con_pool->returnConnection(connect);
+        return false;
+    }
+    for (size_t i = 0; i + 1 < reply->elements; i += 2)
+    {
+        if (reply->element[i]->type == REDIS_REPLY_STRING &&
+            reply->element[i + 1]->type == REDIS_REPLY_STRING)
+        {
+            out[reply->element[i]->str] = reply->element[i + 1]->str;
+        }
+    }
+    freeReplyObject(reply);
+    _con_pool->returnConnection(connect);
+    return true;
+}
+
+bool RedisMgr::sAdd(const std::string& key, const std::string& member)
+{
+    auto connect = _con_pool->getConnection();
+    if (connect == nullptr)
+    {
+        return false;
+    }
+    auto reply = (redisReply*)redisCommand(connect, "SADD %s %s", key.c_str(), member.c_str());
+    if (reply == nullptr || reply->type != REDIS_REPLY_INTEGER)
+    {
+        if (reply)
+        {
+            freeReplyObject(reply);
+        }
+        _con_pool->returnConnection(connect);
+        return false;
+    }
+    freeReplyObject(reply);
+    _con_pool->returnConnection(connect);
+    return true;
+}
+
+bool RedisMgr::sRem(const std::string& key, const std::string& member)
+{
+    auto connect = _con_pool->getConnection();
+    if (connect == nullptr)
+    {
+        return false;
+    }
+    auto reply = (redisReply*)redisCommand(connect, "SREM %s %s", key.c_str(), member.c_str());
+    if (reply == nullptr || reply->type != REDIS_REPLY_INTEGER)
+    {
+        if (reply)
+        {
+            freeReplyObject(reply);
+        }
+        _con_pool->returnConnection(connect);
+        return false;
+    }
+    freeReplyObject(reply);
+    _con_pool->returnConnection(connect);
+    return true;
+}
+
+bool RedisMgr::sMembers(const std::string& key, std::vector<std::string>& members)
+{
+    members.clear();
+    auto connect = _con_pool->getConnection();
+    if (connect == nullptr)
+    {
+        return false;
+    }
+    auto reply = (redisReply*)redisCommand(connect, "SMEMBERS %s", key.c_str());
+    if (reply == nullptr || reply->type != REDIS_REPLY_ARRAY)
+    {
+        if (reply)
+        {
+            freeReplyObject(reply);
+        }
+        _con_pool->returnConnection(connect);
+        return false;
+    }
+    for (size_t i = 0; i < reply->elements; ++i)
+    {
+        if (reply->element[i]->type == REDIS_REPLY_STRING)
+        {
+            members.emplace_back(reply->element[i]->str);
+        }
+    }
+    freeReplyObject(reply);
+    _con_pool->returnConnection(connect);
+    return true;
+}
+
 bool RedisMgr::del(const std::string& key)
 {
     auto connect = _con_pool->getConnection();

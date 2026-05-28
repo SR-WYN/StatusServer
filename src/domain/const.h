@@ -42,4 +42,9 @@ namespace RedisPrefix {
     constexpr const char* IPCOUNTPREFIX = "ipcount_";
     constexpr const char* USER_BASE_INFO = "ubaseinfo_";
     constexpr const char* LOGIN_COUNT = "logincount";
+    constexpr const char* CHAT_NODES = "chat_nodes";
+    constexpr const char* USER_CHAT_NODE = "user_chat_node_";
+    constexpr const char* CHAT_NODE_USERS = "chat_node_users_";
 }
+
+constexpr int CHAT_NODE_TTL_SEC = 30;

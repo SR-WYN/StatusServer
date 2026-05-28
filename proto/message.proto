@@ -38,9 +38,91 @@ message LoginRsp {
   string token = 3;
 }
 
+message RegisterChatNodeReq {
+  string name = 1;
+  string client_host = 2;
+  string client_port = 3;
+  string rpc_host = 4;
+  string rpc_port = 5;
+  string instance_id = 6;
+}
+
+message RegisterChatNodeRsp {
+  int32 error = 1;
+  string name = 2;
+}
+
+message UnregisterChatNodeReq {
+  string name = 1;
+  string instance_id = 2;
+}
+
+message UnregisterChatNodeRsp {
+  int32 error = 1;
+}
+
+message HeartbeatChatNodeReq {
+  string name = 1;
+  string instance_id = 2;
+}
+
+message HeartbeatChatNodeRsp {
+  int32 error = 1;
+}
+
+message GetUserChatNodeReq {
+  int32 uid = 1;
+}
+
+message GetUserChatNodeRsp {
+  int32 error = 1;
+  string node_name = 2;
+  string rpc_host = 3;
+  string rpc_port = 4;
+  string client_host = 5;
+  string client_port = 6;
+}
+
+message GetChatNodeReq {
+  string name = 1;
+}
+
+message GetChatNodeRsp {
+  int32 error = 1;
+  string name = 2;
+  string rpc_host = 3;
+  string rpc_port = 4;
+  string client_host = 5;
+  string client_port = 6;
+}
+
+message BindUserToNodeReq {
+  int32 uid = 1;
+  string node_name = 2;
+}
+
+message BindUserToNodeRsp {
+  int32 error = 1;
+}
+
+message UnbindUserReq {
+  int32 uid = 1;
+}
+
+message UnbindUserRsp {
+  int32 error = 1;
+}
+
 service StatusService {
   rpc GetChatServer (GetChatServerReq) returns (GetChatServerRsp);
   rpc Login(LoginReq) returns(LoginRsp);
+  rpc RegisterChatNode(RegisterChatNodeReq) returns (RegisterChatNodeRsp);
+  rpc UnregisterChatNode(UnregisterChatNodeReq) returns (UnregisterChatNodeRsp);
+  rpc HeartbeatChatNode(HeartbeatChatNodeReq) returns (HeartbeatChatNodeRsp);
+  rpc GetUserChatNode(GetUserChatNodeReq) returns (GetUserChatNodeRsp);
+  rpc GetChatNode(GetChatNodeReq) returns (GetChatNodeRsp);
+  rpc BindUserToNode(BindUserToNodeReq) returns (BindUserToNodeRsp);
+  rpc UnbindUser(UnbindUserReq) returns (UnbindUserRsp);
 }
 
 message AddFriendReq {
