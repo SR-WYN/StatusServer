@@ -76,7 +76,6 @@ void ChatNodeRegistry::purgeExpiredNodes()
         {
             RedisMgr::getInstance().hDel(RedisPrefix::CHAT_NODES, entry.first);
             RedisMgr::getInstance().hDel(RedisPrefix::LOGIN_COUNT, entry.first);
-            std::cout << "Purged expired chat node: " << entry.first << std::endl;
         }
     }
 }
@@ -202,8 +201,6 @@ bool ChatNodeRegistry::bindUser(int uid, const std::string &node_name)
     // 节点可能刚注册，getNode 校验失败时仍允许绑定（路由表由 chat_nodes 维护）
     if (!getNode(node_name))
     {
-        std::cerr << "bindUser: node not in alive registry, binding anyway name=" << node_name
-                  << std::endl;
     }
     const std::string uid_str = std::to_string(uid);
     auto &redis = RedisMgr::getInstance();

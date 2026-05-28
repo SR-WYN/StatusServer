@@ -21,7 +21,6 @@ int main(int argc, char** argv)
     }
     catch (std::exception const& e)
     {
-        std::cerr << "Error: " << e.what() << std::endl;
         return EXIT_FAILURE;
     }
     return 0;
@@ -38,7 +37,6 @@ void runServer()
     builder.RegisterService(&service);
     // 构建并启动gRPC服务器
     std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
-    std::cout << "Server listening on " << server_address << std::endl;
     // 创建Boost.Asio的io_context
     boost::asio::io_context io_context;
     // 创建signal_set用于捕获SIGINT
@@ -49,7 +47,6 @@ void runServer()
         {
             if (!error)
             {
-                std::cout << "Shutting down server..." << std::endl;
                 server->Shutdown(); // 优雅地关闭服务器
             }
         });

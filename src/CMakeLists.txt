@@ -54,6 +54,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     gRPC::grpc++_reflection
     protobuf::libprotobuf
     hiredis
+    spdlog::spdlog
 )
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD

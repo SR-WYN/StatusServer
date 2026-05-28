@@ -27,8 +27,6 @@ RedisConPool::RedisConPool(size_t poolSize, const char* host, int port, const ch
         auto reply = (redisReply*)redisCommand(context, "AUTH %s", pwd);
         if (reply == nullptr || reply->type == REDIS_REPLY_ERROR)
         {
-            std::cout << reply->str << std::endl;
-            std::cout << "认证失败" << std::endl;
             // 执行成功 释放redisCommand执行后返回的redisReply所占用的内存
             freeReplyObject(reply);
             continue;
@@ -36,7 +34,6 @@ RedisConPool::RedisConPool(size_t poolSize, const char* host, int port, const ch
 
         // 执行成功 释放redisCommand执行后返回的redisReply所占用的内存
         freeReplyObject(reply);
-        std::cout << "认证成功" << std::endl;
         _connections.push(context);
     }
 
@@ -146,7 +143,6 @@ bool RedisConPool::reconnect()
     auto reply = (redisReply*)redisCommand(context, "AUTH %s", _pwd.c_str());
     if (reply == nullptr || reply->type == REDIS_REPLY_ERROR)
     {
-        std::cout << "认证失败" << std::endl;
         if (reply)
         {
             freeReplyObject(reply);
@@ -156,7 +152,6 @@ bool RedisConPool::reconnect()
     }
     // 执行成功 释放redisCommand执行后返回的redisReply所占用的内存
     freeReplyObject(reply);
-    std::cout << "认证成功" << std::endl;
     {
         std::lock_guard<std::mutex> lock(_mutex);
         _connections.push(context);
@@ -181,7 +176,6 @@ void RedisConPool::checkThreadPro()
         auto reply = (redisReply*)redisCommand(context, "PING");
         if (context->err)
         {
-            std::cout << "Connection error: " << context->err << std::endl;
             if (reply)
             {
                 freeReplyObject(reply);
@@ -192,7 +186,6 @@ void RedisConPool::checkThreadPro()
         }
         if (!reply || reply->type == REDIS_REPLY_ERROR)
         {
-            std::cout << "reply is nullptr,redis ping failed: " << std::endl;
             if (reply)
             {
                 freeReplyObject(reply);

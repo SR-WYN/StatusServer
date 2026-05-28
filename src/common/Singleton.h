@@ -9,7 +9,6 @@ protected:
     Singleton() = default;
     virtual ~Singleton()
     {
-        std::cout << "this is singleton destruct" << std::endl;
     }
 
     // 禁止拷贝和赋值
@@ -25,6 +24,5 @@ public:
 
     void printAddress()
     {
-        std::cout << &getInstance() << std::endl;
     }
 };

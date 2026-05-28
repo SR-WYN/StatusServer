@@ -99,7 +99,6 @@ public:
             }
             if (reply->type == REDIS_REPLY_ERROR)
             {
-                std::cerr << "HGET error: " << reply->str << std::endl;
                 return false;
             }
             if (reply->type == REDIS_REPLY_STRING)
@@ -336,7 +335,6 @@ private:
             redisCommandArgv(ctx, static_cast<int>(argv.size()), argv.data(), arglen.data()));
         if (!reply)
         {
-            std::cerr << "Redis command failed: " << ctx->errstr << std::endl;
         }
         return reply;
     }
