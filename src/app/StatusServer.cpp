@@ -3,7 +3,6 @@
 #include "Log.h"
 #include "StatusServiceImpl.h"
 #include <boost/asio.hpp>
-#include <hiredis/hiredis.h>
 #include <iostream>
 #include <json/json.h>
 #include <json/reader.h>

@@ -11,7 +11,10 @@ find_package(jsoncpp REQUIRED)
 find_package(Protobuf REQUIRED)
 find_package(gRPC REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
-find_library(HIREDIS_LIB hiredis REQUIRED)
+
+# redis++ 依赖 hiredis，通过 hiredis_DIR 缓存变量指定路径
+set(hiredis_DIR "/usr/lib/x86_64-linux-gnu/cmake/Hiredis" CACHE PATH "Path to hiredis cmake config" FORCE)
+find_package(redis++ REQUIRED)
 
 find_program(_GRPC_CPP_PLUGIN_EXECUTABLE grpc_cpp_plugin)
 

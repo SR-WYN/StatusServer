@@ -53,7 +53,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     gRPC::grpc++
     gRPC::grpc++_reflection
     protobuf::libprotobuf
-    hiredis
+    redis++::redis++
     spdlog::spdlog
 )
 
