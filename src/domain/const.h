@@ -1,9 +1,6 @@
 #pragma once
 
 #include "Singleton.h"
-#include <boost/asio.hpp>
-#include <boost/beast.hpp>
-#include <boost/beast/http.hpp>
 #include <functional>
 #include <iostream>
 #include <json/json.h>
@@ -12,11 +9,6 @@
 #include <map>
 #include <memory>
 #include <unordered_map>
-
-namespace beast = boost::beast;
-namespace http = beast::http;
-namespace net = boost::asio;
-using tcp = boost::asio::ip::tcp;
 
 enum ErrorCodes
 {

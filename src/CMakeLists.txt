@@ -7,11 +7,9 @@ add_library(statusserver_includes INTERFACE)
 target_include_directories(statusserver_includes INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/common
     ${CMAKE_CURRENT_SOURCE_DIR}/domain
-    ${CMAKE_CURRENT_SOURCE_DIR}/net
     ${CMAKE_CURRENT_SOURCE_DIR}/application
     ${CMAKE_CURRENT_SOURCE_DIR}/infra/config
     ${CMAKE_CURRENT_SOURCE_DIR}/infra/redis
-    ${CMAKE_CURRENT_SOURCE_DIR}/infra/grpc
     ${PROTO_GEN_DIR}
 )
 
@@ -19,8 +17,6 @@ add_subdirectory(common)
 add_subdirectory(domain)
 add_subdirectory(infra/config)
 add_subdirectory(infra/redis)
-add_subdirectory(infra/grpc)
-add_subdirectory(net)
 add_subdirectory(application)
 add_subdirectory(app)
 
@@ -36,16 +32,13 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${PROTO_GEN_DIR})
 
-# ss_net 在 ss_application 之前，与 Gate 静态链接顺序一致
 target_link_libraries(${PROJECT_NAME} PRIVATE
     statusserver_includes
     statusserver_app_dir
-    ss_net
     ss_application
     ss_common
     ss_config
     ss_redis
-    ss_grpc
     Boost::system
     Boost::thread
     Boost::filesystem
