@@ -1,5 +1,6 @@
 #include "RedisMgr.h"
 #include "ConfigMgr.h"
+#include "Log.h"
 
 RedisMgr::RedisMgr()
 {
@@ -18,9 +19,14 @@ RedisMgr::RedisMgr()
     conn_opts.socket_timeout = std::chrono::milliseconds(3000);
 
     _redis = std::make_unique<sw::redis::Redis>(conn_opts, pool_opts);
+    Log::info(LogModule::Redis, "connected to Redis at {}:{} (pool size={})", host, port,
+              pool_opts.size);
 }
 
-RedisMgr::~RedisMgr() = default;
+RedisMgr::~RedisMgr()
+{
+    Log::info(LogModule::Redis, "RedisMgr destroyed");
+}
 
 bool RedisMgr::get(const std::string &key, std::string &value)
 {
@@ -34,8 +40,9 @@ bool RedisMgr::get(const std::string &key, std::string &value)
         }
         return false;
     }
-    catch (...)
+    catch (const sw::redis::Error &e)
     {
+        Log::error(LogModule::Redis, "GET {} failed: {}", key, e.what());
         return false;
     }
 }
@@ -47,8 +54,9 @@ bool RedisMgr::set(const std::string &key, const std::string &value)
         _redis->set(key, value);
         return true;
     }
-    catch (...)
+    catch (const sw::redis::Error &e)
     {
+        Log::error(LogModule::Redis, "SET {} failed: {}", key, e.what());
         return false;
     }
 }
@@ -59,8 +67,9 @@ bool RedisMgr::del(const std::string &key)
     {
         return _redis->del(key) > 0;
     }
-    catch (...)
+    catch (const sw::redis::Error &e)
     {
+        Log::error(LogModule::Redis, "DEL {} failed: {}", key, e.what());
         return false;
     }
 }
@@ -71,8 +80,9 @@ bool RedisMgr::existsKey(const std::string &key)
     {
         return _redis->exists(key) > 0;
     }
-    catch (...)
+    catch (const sw::redis::Error &e)
     {
+        Log::error(LogModule::Redis, "EXISTS {} failed: {}", key, e.what());
         return false;
     }
 }
@@ -84,8 +94,9 @@ bool RedisMgr::hSet(const std::string &key, const std::string &field, const std:
         _redis->hset(key, field, value);
         return true;
     }
-    catch (...)
+    catch (const sw::redis::Error &e)
     {
+        Log::error(LogModule::Redis, "HSET {} {} failed: {}", key, field, e.what());
         return false;
     }
 }
@@ -102,8 +113,9 @@ std::string RedisMgr::hGet(const std::string &key, const std::string &field)
         auto val = _redis->hget(key, field);
         return val ? *val : "";
     }
-    catch (...)
+    catch (const sw::redis::Error &e)
     {
+        Log::error(LogModule::Redis, "HGET {} {} failed: {}", key, field, e.what());
         return "";
     }
 }
@@ -114,8 +126,9 @@ bool RedisMgr::hDel(const std::string &key, const std::string &field)
     {
         return _redis->hdel(key, field) > 0;
     }
-    catch (...)
+    catch (const sw::redis::Error &e)
     {
+        Log::error(LogModule::Redis, "HDEL {} {} failed: {}", key, field, e.what());
         return false;
     }
 }
@@ -128,8 +141,9 @@ bool RedisMgr::hGetAll(const std::string &key, std::map<std::string, std::string
         _redis->hgetall(key, std::inserter(out, out.end()));
         return true;
     }
-    catch (...)
+    catch (const sw::redis::Error &e)
     {
+        Log::error(LogModule::Redis, "HGETALL {} failed: {}", key, e.what());
         return false;
     }
 }
@@ -140,8 +154,9 @@ bool RedisMgr::lPush(const std::string &key, const std::string &value)
     {
         return _redis->lpush(key, value) > 0;
     }
-    catch (...)
+    catch (const sw::redis::Error &e)
     {
+        Log::error(LogModule::Redis, "LPUSH {} failed: {}", key, e.what());
         return false;
     }
 }
@@ -158,8 +173,9 @@ bool RedisMgr::lPop(const std::string &key, std::string &value)
         }
         return false;
     }
-    catch (...)
+    catch (const sw::redis::Error &e)
     {
+        Log::error(LogModule::Redis, "LPOP {} failed: {}", key, e.what());
         return false;
     }
 }
@@ -170,8 +186,9 @@ bool RedisMgr::rPush(const std::string &key, const std::string &value)
     {
         return _redis->rpush(key, value) > 0;
     }
-    catch (...)
+    catch (const sw::redis::Error &e)
     {
+        Log::error(LogModule::Redis, "RPUSH {} failed: {}", key, e.what());
         return false;
     }
 }
@@ -188,8 +205,9 @@ bool RedisMgr::rPop(const std::string &key, std::string &value)
         }
         return false;
     }
-    catch (...)
+    catch (const sw::redis::Error &e)
     {
+        Log::error(LogModule::Redis, "RPOP {} failed: {}", key, e.what());
         return false;
     }
 }
@@ -200,8 +218,9 @@ bool RedisMgr::sAdd(const std::string &key, const std::string &member)
     {
         return _redis->sadd(key, member) > 0;
     }
-    catch (...)
+    catch (const sw::redis::Error &e)
     {
+        Log::error(LogModule::Redis, "SADD {} {} failed: {}", key, member, e.what());
         return false;
     }
 }
@@ -212,8 +231,9 @@ bool RedisMgr::sRem(const std::string &key, const std::string &member)
     {
         return _redis->srem(key, member) > 0;
     }
-    catch (...)
+    catch (const sw::redis::Error &e)
     {
+        Log::error(LogModule::Redis, "SREM {} {} failed: {}", key, member, e.what());
         return false;
     }
 }
@@ -226,14 +246,16 @@ bool RedisMgr::sMembers(const std::string &key, std::vector<std::string> &member
         _redis->smembers(key, std::back_inserter(members));
         return true;
     }
-    catch (...)
+    catch (const sw::redis::Error &e)
     {
+        Log::error(LogModule::Redis, "SMEMBERS {} failed: {}", key, e.what());
         return false;
     }
 }
 
 void RedisMgr::close()
 {
+    Log::info(LogModule::Redis, "closing Redis connection");
     // redis-plus-plus 析构时自动释放连接池
     _redis.reset();
 }

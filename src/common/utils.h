@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdint>
 #include <functional>
 #include <string>
 
@@ -18,6 +19,9 @@ std::string urlEncode(const std::string& str);
 std::string urlDecode(const std::string& str);
 
 std::string generate_unique_string();
+
+// 获取当前 Unix 时间戳（秒）
+int64_t nowSec();
 
 class Defer
 {

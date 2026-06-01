@@ -7,9 +7,7 @@ class Singleton
 protected:
     // 保护构造：允许子类构造，禁止外部构造
     Singleton() = default;
-    virtual ~Singleton()
-    {
-    }
+    virtual ~Singleton() = default;
 
     // 禁止拷贝和赋值
     Singleton(const Singleton &) = delete;
@@ -20,9 +18,5 @@ public:
     {
         static T instance;
         return instance;
-    }
-
-    void printAddress()
-    {
     }
 };

@@ -1,4 +1,5 @@
 #include "ConfigMgr.h"
+#include "Log.h"
 #include <algorithm>
 #include <cctype>
 #include <fstream>
@@ -42,10 +43,10 @@ ConfigMgr::ConfigMgr()
     const boost::filesystem::path config_path =
         boost::filesystem::current_path() / "config.json";
 
-
     std::ifstream file(config_path.string());
     if (!file.is_open())
     {
+        std::cerr << "ConfigMgr: failed to open config file: " << config_path << std::endl;
         return;
     }
 
@@ -53,6 +54,8 @@ ConfigMgr::ConfigMgr()
     Json::Reader reader;
     if (!reader.parse(file, root))
     {
+        std::cerr << "ConfigMgr: failed to parse config JSON: " << reader.getFormattedErrorMessages()
+                  << std::endl;
         return;
     }
 
@@ -74,6 +77,8 @@ ConfigMgr::ConfigMgr()
     }
 
     loadLogConfig();
+    Log::info(LogModule::Config, "loaded config from {} ({} sections)", config_path.string(),
+              _config_map.size());
 }
 
 namespace

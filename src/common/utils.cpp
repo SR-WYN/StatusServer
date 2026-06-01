@@ -1,6 +1,15 @@
 #include "utils.h"
+#include <chrono>
 #include "boost/uuid/random_generator.hpp"
 #include "boost/uuid/uuid_io.hpp"
+
+int64_t utils::nowSec()
+{
+    return std::chrono::duration_cast<std::chrono::seconds>(
+               std::chrono::system_clock::now().time_since_epoch())
+        .count();
+}
+
 
 unsigned char utils::toHex(unsigned char x)
 {

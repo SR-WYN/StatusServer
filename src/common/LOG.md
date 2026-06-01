@@ -12,7 +12,7 @@
 | `Config` | `config.log` | 配置加载（`infra/config/`） |
 | `Grpc` | `grpc.log` | gRPC 服务 `StatusServiceImpl`、调用 Chat 节点的客户端（`infra/grpc/`） |
 | `Redis` | `redis.log` | 节点表、用户绑定、登录计数等（`infra/redis/`） |
-| `Registry` | `registry.log` | 聊天节点注册/注销/心跳、用户绑定节点（`application/ChatNodeRegistry`） |
+| `Registry` | `registry.log` | 聊天节点注册/注销/心跳、用户绑定节点（`application/NodeRegistry`） |
 
 只有**实际打过日志**的模块才会生成对应文件。
 
@@ -89,7 +89,7 @@ LOGW(LogModule::Grpc, "BuildAndStart failed");
 | `src/infra/config/` | `LogModule::Config` |
 | `src/infra/grpc/`、`StatusServiceImpl` | `LogModule::Grpc` |
 | `src/infra/redis/` | `LogModule::Redis` |
-| `src/application/ChatNodeRegistry.*` | `LogModule::Registry` |
+| `src/application/NodeRegistry.*` | `LogModule::Registry` |
 
 ---
 
