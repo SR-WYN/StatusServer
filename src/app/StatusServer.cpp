@@ -1,6 +1,9 @@
+// StatusServer.cpp - 网关服务器入口
 #include "ConfigMgr.h"
 #include "Log.h"
+#include "RedisNodeRegistry.h"
 #include "StatusServiceImpl.h"
+
 #include <csignal>
 #include <grpcpp/grpcpp.h>
 #include <iostream>
@@ -30,35 +33,38 @@ void runServer() {
     struct sigaction sa;
     sa.sa_handler = signalHandler;
     sigemptyset(&sa.sa_mask);
-    sa.sa_flags = SA_RESTART; 
+    sa.sa_flags = SA_RESTART;
     sigaction(SIGINT, &sa, nullptr);
     sigaction(SIGTERM, &sa, nullptr);
 
-    // 3. 构建 gRPC 服务
+    // 3. 构建依赖：创建 Redis 实现的节点注册中心
+    auto registry = std::make_shared<RedisNodeRegistry>();
+    StatusServiceImpl service(registry);
+
+    // 4. 构建 gRPC 服务
     auto& cfg = ConfigMgr::getInstance();
     std::string server_address(cfg["StatusServer"]["Host"] + ":" + cfg["StatusServer"]["Port"]);
-    StatusServiceImpl service;
-    
+
     grpc::ServerBuilder builder;
     builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
     builder.RegisterService(&service);
-    
+
     g_server = builder.BuildAndStart();
     Log::info(LogModule::App, "StatusServer listening on {}", server_address);
 
-    // 4. 核心：优雅退出的调度循环
+    // 5. 核心：优雅退出的调度循环
     // 不直接调用 g_server->Wait()，而是采用轮询检测
     // 这保证了 Shutdown() 的调用方永远是主线程
     while (!g_quit.load()) {
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
 
-    // 5. 优雅清理资源
+    // 6. 优雅清理资源
     Log::info(LogModule::App, "Signal received, initiating graceful shutdown...");
     if (g_server) {
         g_server->Shutdown(); // 通知 gRPC 停止接受请求并完成现有处理
     }
-    
+
     // 调用 Wait() 等待 gRPC 内部完成资源清理并返回
     // 此时 Shutdown 已经被调用，Wait 会迅速返回
     g_server->Wait();
