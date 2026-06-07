@@ -13,15 +13,6 @@ StatusServiceImpl::StatusServiceImpl(std::shared_ptr<INodeRegistry> registry)
     _registry->cleanupExpiredNodes();
 }
 
-void StatusServiceImpl::fillNodeReply(const NodeInfo& node, GetChatNodeRsp* reply)
-{
-    reply->set_name(node.name);
-    reply->set_rpc_host(node.rpc_host);
-    reply->set_rpc_port(node.rpc_port);
-    reply->set_client_host(node.client_host);
-    reply->set_client_port(node.client_port);
-}
-
 Status StatusServiceImpl::GetChatServer(ServerContext* context,
                                         const GetChatServerReq* request,
                                         GetChatServerRsp* reply)
@@ -56,41 +47,6 @@ void StatusServiceImpl::insertToken(int uid, const std::string& token)
     std::string tokenKey = RedisPrefix::USERTOKENPREFIX + uidStr;
     RedisMgr::getInstance().set(tokenKey, token);
     Log::debug(LogModule::Grpc, "insertToken: uid={} token={}", uid, token);
-}
-
-Status StatusServiceImpl::Login(ServerContext* context, const LoginReq* request,
-                                LoginRsp* reply)
-{
-    (void)context;
-    auto uid = request->uid();
-    auto token = request->token();
-    Log::info(LogModule::Grpc, "Login: uid={} token={}", uid, token);
-
-    std::string uidStr = std::to_string(uid);
-    std::string tokenKey = RedisPrefix::USERTOKENPREFIX + uidStr;
-    std::string tokenValue;
-    bool success = RedisMgr::getInstance().get(tokenKey, tokenValue);
-    if (!success)
-    {
-        Log::warn(LogModule::Grpc, "Login: uid={} not found in Redis", uid);
-        reply->set_error(ErrorCodes::UID_INVALID);
-        return Status::OK;
-    }
-
-    if (tokenValue != token)
-    {
-        Log::warn(LogModule::Grpc,
-                  "Login: token mismatch for uid={} (expected={}, got={})",
-                  uid, tokenValue, token);
-        reply->set_error(ErrorCodes::TOKEN_INVALID);
-        return Status::OK;
-    }
-
-    Log::info(LogModule::Grpc, "Login: uid={} login success", uid);
-    reply->set_error(ErrorCodes::SUCCESS);
-    reply->set_uid(uid);
-    reply->set_token(token);
-    return Status::OK;
 }
 
 Status StatusServiceImpl::RegisterChatNode(ServerContext* context,
@@ -198,32 +154,6 @@ Status StatusServiceImpl::GetUserChatNode(ServerContext* context,
     Log::info(LogModule::Grpc,
               "GetUserChatNode: uid={} -> node {} ({}:{})",
               request->uid(), node->name, node->client_host, node->client_port);
-    return Status::OK;
-}
-
-Status StatusServiceImpl::GetChatNode(ServerContext* context,
-                                      const GetChatNodeReq* request,
-                                      GetChatNodeRsp* reply)
-{
-    (void)context;
-    Log::info(LogModule::Grpc, "GetChatNode: name={}", request->name());
-
-    auto node = _registry->getNode(request->name());
-    if (!node)
-    {
-        Log::warn(LogModule::Grpc,
-                  "GetChatNode: node {} not found", request->name());
-        reply->set_error(ErrorCodes::RPCFAILED);
-        return Status::OK;
-    }
-
-    reply->set_error(ErrorCodes::SUCCESS);
-    fillNodeReply(*node, reply);
-
-    Log::info(LogModule::Grpc,
-              "GetChatNode: name={} client={}:{} rpc={}:{}",
-              node->name, node->client_host, node->client_port,
-              node->rpc_host, node->rpc_port);
     return Status::OK;
 }
 
