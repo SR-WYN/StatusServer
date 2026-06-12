@@ -1,3 +1,4 @@
+// ConfigMgr.cpp - 配置管理实现，解析 JSON 配置文件并提供分节访问
 #include "ConfigMgr.h"
 #include "Log.h"
 #include <algorithm>
@@ -14,12 +15,12 @@ SectionInfo::~SectionInfo()
     _section_datas.clear();
 }
 
-SectionInfo::SectionInfo(const SectionInfo& src)
+SectionInfo::SectionInfo(const SectionInfo &src)
 {
     _section_datas = src._section_datas;
 }
 
-SectionInfo& SectionInfo::operator=(const SectionInfo& src)
+SectionInfo &SectionInfo::operator=(const SectionInfo &src)
 {
     if (&src == this)
     {
@@ -29,19 +30,19 @@ SectionInfo& SectionInfo::operator=(const SectionInfo& src)
     return *this;
 }
 
-std::string SectionInfo::operator[](const std::string& key)
+std::string SectionInfo::operator[](const std::string &key) const
 {
-    if (_section_datas.find(key) == _section_datas.end())
+    auto it = _section_datas.find(key);
+    if (it == _section_datas.end())
     {
         return "";
     }
-    return _section_datas.at(key);
+    return it->second;
 }
 
 ConfigMgr::ConfigMgr()
 {
-    const boost::filesystem::path config_path =
-        boost::filesystem::current_path() / "config.json";
+    const boost::filesystem::path config_path = boost::filesystem::current_path() / "config.json";
 
     std::ifstream file(config_path.string());
     if (!file.is_open())
@@ -54,12 +55,12 @@ ConfigMgr::ConfigMgr()
     Json::Reader reader;
     if (!reader.parse(file, root))
     {
-        std::cerr << "ConfigMgr: failed to parse config JSON: " << reader.getFormattedErrorMessages()
-                  << std::endl;
+        std::cerr << "ConfigMgr: failed to parse config JSON: "
+                  << reader.getFormattedErrorMessages() << std::endl;
         return;
     }
 
-    for (auto const& section_name : root.getMemberNames())
+    for (auto const &section_name : root.getMemberNames())
     {
         Json::Value section_value = root[section_name];
 
@@ -67,7 +68,7 @@ ConfigMgr::ConfigMgr()
         {
             SectionInfo section_info;
             // 遍历该 Section 下的所有键值对
-            for (auto const& key : section_value.getMemberNames())
+            for (auto const &key : section_value.getMemberNames())
             {
                 // 统一转为 string 存储
                 section_info._section_datas[key] = section_value[key].asString();
@@ -83,11 +84,12 @@ ConfigMgr::ConfigMgr()
 
 namespace
 {
-spdlog::level::level_enum parseLogLevel(const std::string& level_str)
+spdlog::level::level_enum parseLogLevel(const std::string &level_str)
 {
     std::string level = level_str;
-    std::transform(level.begin(), level.end(), level.begin(),
-                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    std::transform(level.begin(), level.end(), level.begin(), [](unsigned char c) {
+        return static_cast<char>(std::tolower(c));
+    });
     if (level == "trace")
     {
         return spdlog::level::trace;
@@ -145,11 +147,12 @@ ConfigMgr::~ConfigMgr()
     _config_map.clear();
 }
 
-SectionInfo ConfigMgr::operator[](const std::string& section)
+SectionInfo ConfigMgr::operator[](const std::string &section) const
 {
-    if (_config_map.find(section) == _config_map.end())
+    auto it = _config_map.find(section);
+    if (it == _config_map.end())
     {
         return SectionInfo();
     }
-    return _config_map[section];
+    return it->second;
 }

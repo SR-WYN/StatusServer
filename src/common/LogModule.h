@@ -1,3 +1,4 @@
+// LogModule.h - 日志模块枚举和名称映射
 #pragma once
 
 #include <array>

@@ -1,21 +1,20 @@
 // StatusServiceImpl.cpp — gRPC 服务实现
-// 通过 INodeRegistry 接口转发所有节点注册/发现/绑定的业务逻辑
+// 通过 NodeRegistry 接口转发所有节点注册/发现/绑定的业务逻辑
 #include "StatusServiceImpl.h"
 #include "Log.h"
 #include "RedisMgr.h"
 #include "const.h"
 #include "utils.h"
 
-StatusServiceImpl::StatusServiceImpl(std::shared_ptr<INodeRegistry> registry)
+StatusServiceImpl::StatusServiceImpl(std::shared_ptr<NodeRegistry> registry)
     : _registry(std::move(registry))
 {
     Log::info(LogModule::Grpc, "StatusServiceImpl constructed, cleaning up expired nodes");
     _registry->cleanupExpiredNodes();
 }
 
-Status StatusServiceImpl::GetChatServer(ServerContext* context,
-                                        const GetChatServerReq* request,
-                                        GetChatServerRsp* reply)
+Status StatusServiceImpl::GetChatServer(ServerContext *context, const GetChatServerReq *request,
+                                        GetChatServerRsp *reply)
 {
     (void)context;
     Log::info(LogModule::Grpc, "GetChatServer: uid={}", request->uid());
@@ -23,8 +22,8 @@ Status StatusServiceImpl::GetChatServer(ServerContext* context,
     auto server = _registry->selectLeastLoadedNode();
     if (!server)
     {
-        Log::warn(LogModule::Grpc,
-                  "GetChatServer: no available chat server for uid={}", request->uid());
+        Log::warn(LogModule::Grpc, "GetChatServer: no available chat server for uid={}",
+                  request->uid());
         reply->set_error(ErrorCodes::RPCFAILED);
         return Status::OK;
     }
@@ -32,16 +31,15 @@ Status StatusServiceImpl::GetChatServer(ServerContext* context,
     reply->set_host(server->client_host);
     reply->set_port(server->client_port);
     reply->set_error(ErrorCodes::SUCCESS);
-    reply->set_token(utils::generate_unique_string());
+    reply->set_token(utils::generateUniqueString());
     insertToken(request->uid(), reply->token());
 
-    Log::info(LogModule::Grpc,
-              "GetChatServer: assigned uid={} to {}:{} with token",
-              request->uid(), server->client_host, server->client_port);
+    Log::info(LogModule::Grpc, "GetChatServer: assigned uid={} to {}:{} with token", request->uid(),
+              server->client_host, server->client_port);
     return Status::OK;
 }
 
-void StatusServiceImpl::insertToken(int uid, const std::string& token)
+void StatusServiceImpl::insertToken(int uid, const std::string &token)
 {
     std::string uidStr = std::to_string(uid);
     std::string tokenKey = RedisPrefix::USERTOKENPREFIX + uidStr;
@@ -49,16 +47,14 @@ void StatusServiceImpl::insertToken(int uid, const std::string& token)
     Log::debug(LogModule::Grpc, "insertToken: uid={} token={}", uid, token);
 }
 
-Status StatusServiceImpl::RegisterChatNode(ServerContext* context,
-                                           const RegisterChatNodeReq* request,
-                                           RegisterChatNodeRsp* reply)
+Status StatusServiceImpl::RegisterChatNode(ServerContext *context,
+                                           const RegisterChatNodeReq *request,
+                                           RegisterChatNodeRsp *reply)
 {
     (void)context;
-    Log::info(LogModule::Grpc,
-              "RegisterChatNode: name={} instance={} client={}:{} rpc={}:{}",
-              request->name(), request->instance_id(),
-              request->client_host(), request->client_port(),
-              request->rpc_host(), request->rpc_port());
+    Log::info(LogModule::Grpc, "RegisterChatNode: name={} instance={} client={}:{} rpc={}:{}",
+              request->name(), request->instance_id(), request->client_host(),
+              request->client_port(), request->rpc_host(), request->rpc_port());
 
     NodeInfo node;
     node.name = request->name();
@@ -70,55 +66,52 @@ Status StatusServiceImpl::RegisterChatNode(ServerContext* context,
 
     if (!_registry->registerNode(node))
     {
-        Log::error(LogModule::Grpc,
-                   "RegisterChatNode: failed to register node {}", request->name());
+        Log::error(LogModule::Grpc, "RegisterChatNode: failed to register node {}",
+                   request->name());
         reply->set_error(ErrorCodes::RPCFAILED);
         return Status::OK;
     }
 
     reply->set_error(ErrorCodes::SUCCESS);
     reply->set_name(node.name);
-    Log::info(LogModule::Grpc,
-              "RegisterChatNode: node {} registered successfully", request->name());
+    Log::info(LogModule::Grpc, "RegisterChatNode: node {} registered successfully",
+              request->name());
     return Status::OK;
 }
 
-Status StatusServiceImpl::UnregisterChatNode(ServerContext* context,
-                                             const UnregisterChatNodeReq* request,
-                                             UnregisterChatNodeRsp* reply)
+Status StatusServiceImpl::UnregisterChatNode(ServerContext *context,
+                                             const UnregisterChatNodeReq *request,
+                                             UnregisterChatNodeRsp *reply)
 {
     (void)context;
-    Log::info(LogModule::Grpc,
-              "UnregisterChatNode: name={} instance={}",
-              request->name(), request->instance_id());
+    Log::info(LogModule::Grpc, "UnregisterChatNode: name={} instance={}", request->name(),
+              request->instance_id());
 
     if (!_registry->unregisterNode(request->name(), request->instance_id()))
     {
-        Log::error(LogModule::Grpc,
-                   "UnregisterChatNode: failed to unregister node {}", request->name());
+        Log::error(LogModule::Grpc, "UnregisterChatNode: failed to unregister node {}",
+                   request->name());
         reply->set_error(ErrorCodes::RPCFAILED);
         return Status::OK;
     }
 
     reply->set_error(ErrorCodes::SUCCESS);
-    Log::info(LogModule::Grpc,
-              "UnregisterChatNode: node {} unregistered successfully", request->name());
+    Log::info(LogModule::Grpc, "UnregisterChatNode: node {} unregistered successfully",
+              request->name());
     return Status::OK;
 }
 
-Status StatusServiceImpl::HeartbeatChatNode(ServerContext* context,
-                                            const HeartbeatChatNodeReq* request,
-                                            HeartbeatChatNodeRsp* reply)
+Status StatusServiceImpl::HeartbeatChatNode(ServerContext *context,
+                                            const HeartbeatChatNodeReq *request,
+                                            HeartbeatChatNodeRsp *reply)
 {
     (void)context;
-    Log::debug(LogModule::Grpc,
-               "HeartbeatChatNode: name={} instance={}",
-               request->name(), request->instance_id());
+    Log::debug(LogModule::Grpc, "HeartbeatChatNode: name={} instance={}", request->name(),
+               request->instance_id());
 
     if (!_registry->heartbeat(request->name(), request->instance_id()))
     {
-        Log::warn(LogModule::Grpc,
-                  "HeartbeatChatNode: failed for node {} instance {}",
+        Log::warn(LogModule::Grpc, "HeartbeatChatNode: failed for node {} instance {}",
                   request->name(), request->instance_id());
         reply->set_error(ErrorCodes::RPCFAILED);
         return Status::OK;
@@ -128,9 +121,8 @@ Status StatusServiceImpl::HeartbeatChatNode(ServerContext* context,
     return Status::OK;
 }
 
-Status StatusServiceImpl::GetUserChatNode(ServerContext* context,
-                                          const GetUserChatNodeReq* request,
-                                          GetUserChatNodeRsp* reply)
+Status StatusServiceImpl::GetUserChatNode(ServerContext *context, const GetUserChatNodeReq *request,
+                                          GetUserChatNodeRsp *reply)
 {
     (void)context;
     Log::info(LogModule::Grpc, "GetUserChatNode: uid={}", request->uid());
@@ -138,8 +130,7 @@ Status StatusServiceImpl::GetUserChatNode(ServerContext* context,
     auto node = _registry->getNodeForUser(request->uid());
     if (!node)
     {
-        Log::warn(LogModule::Grpc,
-                  "GetUserChatNode: no node found for uid={}", request->uid());
+        Log::warn(LogModule::Grpc, "GetUserChatNode: no node found for uid={}", request->uid());
         reply->set_error(ErrorCodes::UID_INVALID);
         return Status::OK;
     }
@@ -151,53 +142,76 @@ Status StatusServiceImpl::GetUserChatNode(ServerContext* context,
     reply->set_client_host(node->client_host);
     reply->set_client_port(node->client_port);
 
-    Log::info(LogModule::Grpc,
-              "GetUserChatNode: uid={} -> node {} ({}:{})",
-              request->uid(), node->name, node->client_host, node->client_port);
+    Log::info(LogModule::Grpc, "GetUserChatNode: uid={} -> node {} ({}:{})", request->uid(),
+              node->name, node->client_host, node->client_port);
     return Status::OK;
 }
 
-Status StatusServiceImpl::BindUserToNode(ServerContext* context,
-                                         const BindUserToNodeReq* request,
-                                         BindUserToNodeRsp* reply)
+Status StatusServiceImpl::BindUserToNode(ServerContext *context, const BindUserToNodeReq *request,
+                                         BindUserToNodeRsp *reply)
 {
     (void)context;
-    Log::info(LogModule::Grpc,
-              "BindUserToNode: uid={} node={}", request->uid(), request->node_name());
+    Log::info(LogModule::Grpc, "BindUserToNode: uid={} node={}", request->uid(),
+              request->node_name());
 
     if (!_registry->bindUser(request->uid(), request->node_name()))
     {
-        Log::error(LogModule::Grpc,
-                   "BindUserToNode: failed to bind uid={} to node {}",
+        Log::error(LogModule::Grpc, "BindUserToNode: failed to bind uid={} to node {}",
                    request->uid(), request->node_name());
         reply->set_error(ErrorCodes::RPCFAILED);
         return Status::OK;
     }
 
     reply->set_error(ErrorCodes::SUCCESS);
-    Log::info(LogModule::Grpc,
-              "BindUserToNode: uid={} bound to node {} successfully",
+    Log::info(LogModule::Grpc, "BindUserToNode: uid={} bound to node {} successfully",
               request->uid(), request->node_name());
     return Status::OK;
 }
 
-Status StatusServiceImpl::UnbindUser(ServerContext* context,
-                                     const UnbindUserReq* request,
-                                     UnbindUserRsp* reply)
+Status StatusServiceImpl::UnbindUser(ServerContext *context, const UnbindUserReq *request,
+                                     UnbindUserRsp *reply)
 {
     (void)context;
     Log::info(LogModule::Grpc, "UnbindUser: uid={}", request->uid());
 
     if (!_registry->unbindUser(request->uid()))
     {
-        Log::error(LogModule::Grpc,
-                   "UnbindUser: failed to unbind uid={}", request->uid());
+        Log::error(LogModule::Grpc, "UnbindUser: failed to unbind uid={}", request->uid());
         reply->set_error(ErrorCodes::RPCFAILED);
         return Status::OK;
     }
 
     reply->set_error(ErrorCodes::SUCCESS);
-    Log::info(LogModule::Grpc,
-              "UnbindUser: uid={} unbound successfully", request->uid());
+    Log::info(LogModule::Grpc, "UnbindUser: uid={} unbound successfully", request->uid());
+    return Status::OK;
+}
+
+Status StatusServiceImpl::ValidateToken(ServerContext *context, const ValidateTokenReq *request,
+                                        ValidateTokenRsp *reply)
+{
+    (void)context;
+    Log::info(LogModule::Grpc, "ValidateToken: uid={}", request->uid());
+
+    std::string uid_str = std::to_string(request->uid());
+    std::string token_key = RedisPrefix::USERTOKENPREFIX + uid_str;
+    std::string stored_token;
+
+    if (!RedisMgr::getInstance().get(token_key, stored_token))
+    {
+        Log::warn(LogModule::Grpc, "ValidateToken: no token found for uid={}", request->uid());
+        reply->set_error(ErrorCodes::UID_INVALID);
+        return Status::OK;
+    }
+
+    if (stored_token != request->token())
+    {
+        Log::warn(LogModule::Grpc, "ValidateToken: token mismatch for uid={}", request->uid());
+        reply->set_error(ErrorCodes::TOKEN_INVALID);
+        return Status::OK;
+    }
+
+    reply->set_error(ErrorCodes::SUCCESS);
+    reply->set_uid(request->uid());
+    Log::info(LogModule::Grpc, "ValidateToken: success uid={}", request->uid());
     return Status::OK;
 }

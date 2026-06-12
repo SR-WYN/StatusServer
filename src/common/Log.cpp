@@ -1,3 +1,4 @@
+// Log.cpp - 日志系统实现，管理多模块日志器
 #include "Log.h"
 
 #include <spdlog/sinks/basic_file_sink.h>

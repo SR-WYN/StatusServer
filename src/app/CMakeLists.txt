@@ -1,2 +1,2 @@
-add_library(statusserver_app_dir INTERFACE)
-target_link_libraries(statusserver_app_dir INTERFACE statusserver_includes)
+add_library(ss_app_dir INTERFACE)
+target_link_libraries(ss_app_dir INTERFACE ss_includes)

@@ -3,8 +3,8 @@
 # 父目录生成的 proto 尚不存在；在本目录声明 GENERATED，便于 add_executable 通过校验（CMake 3.19）
 set_source_files_properties(${PROTO_SRCS} PROPERTIES GENERATED TRUE)
 
-add_library(statusserver_includes INTERFACE)
-target_include_directories(statusserver_includes INTERFACE
+add_library(ss_includes INTERFACE)
+target_include_directories(ss_includes INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/common
     ${CMAKE_CURRENT_SOURCE_DIR}/domain
     ${CMAKE_CURRENT_SOURCE_DIR}/application
@@ -33,8 +33,8 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 target_include_directories(${PROJECT_NAME} PRIVATE ${PROTO_GEN_DIR})
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
-    statusserver_includes
-    statusserver_app_dir
+    ss_includes
+    ss_app_dir
     ss_application
     ss_common
     ss_config

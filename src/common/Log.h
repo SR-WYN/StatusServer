@@ -1,3 +1,4 @@
+// Log.h - 日志系统，基于 spdlog 实现分级日志输出
 #pragma once
 
 #include "LogModule.h"

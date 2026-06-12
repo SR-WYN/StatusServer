@@ -1,7 +1,8 @@
+// utils.cpp - 工具函数实现
 #include "utils.h"
-#include <chrono>
 #include "boost/uuid/random_generator.hpp"
 #include "boost/uuid/uuid_io.hpp"
+#include <chrono>
 
 int64_t utils::nowSec()
 {
@@ -9,7 +10,6 @@ int64_t utils::nowSec()
                std::chrono::system_clock::now().time_since_epoch())
         .count();
 }
-
 
 unsigned char utils::toHex(unsigned char x)
 {
@@ -28,7 +28,7 @@ unsigned char utils::fromHex(unsigned char x)
         return 0;
 }
 
-std::string utils::urlEncode(const std::string& str)
+std::string utils::urlEncode(const std::string &str)
 {
     std::string strTemp = "";
     for (unsigned char c : str)
@@ -51,7 +51,7 @@ std::string utils::urlEncode(const std::string& str)
     return strTemp;
 }
 
-std::string utils::urlDecode(const std::string& str)
+std::string utils::urlDecode(const std::string &str)
 {
     std::string strTemp = "";
     size_t length = str.length();
@@ -75,7 +75,7 @@ std::string utils::urlDecode(const std::string& str)
     return strTemp;
 }
 
-std::string utils::generate_unique_string()
+std::string utils::generateUniqueString()
 {
     // 创建UUID对象
     boost::uuids::uuid uuid = boost::uuids::random_generator()();
@@ -84,8 +84,7 @@ std::string utils::generate_unique_string()
     return unique_string;
 }
 
-utils::Defer::Defer(std::function<void()> func)
-    : _func(func)
+utils::Defer::Defer(std::function<void()> func) : _func(func)
 {
 }
 

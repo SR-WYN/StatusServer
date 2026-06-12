@@ -1,3 +1,4 @@
+// RedisMgr.cpp - Redis 客户端封装实现
 #include "RedisMgr.h"
 #include "ConfigMgr.h"
 #include "Log.h"

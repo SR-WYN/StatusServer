@@ -1,3 +1,4 @@
+// RedisMgr.h - Redis 客户端封装，基于 redis-plus-plus 实现
 #pragma once
 #include "Singleton.h"
 #include <map>

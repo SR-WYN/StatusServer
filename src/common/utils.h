@@ -1,3 +1,4 @@
+// utils.h - 工具函数集合（URL 编解码、UUID 生成等）
 #pragma once
 #include <cstdint>
 #include <functional>
@@ -13,12 +14,12 @@ unsigned char toHex(unsigned char x);
 unsigned char fromHex(unsigned char x);
 
 // 对URL进行编码
-std::string urlEncode(const std::string& str);
+std::string urlEncode(const std::string &str);
 
 // 对URL进行解码
-std::string urlDecode(const std::string& str);
+std::string urlDecode(const std::string &str);
 
-std::string generate_unique_string();
+std::string generateUniqueString();
 
 // 获取当前 Unix 时间戳（秒）
 int64_t nowSec();
@@ -28,8 +29,8 @@ class Defer
 public:
     explicit Defer(std::function<void()> func);
     ~Defer();
-    Defer(const Defer&) = delete;
-    Defer& operator=(const Defer&) = delete;
+    Defer(const Defer &) = delete;
+    Defer &operator=(const Defer &) = delete;
 
 private:
     std::function<void()> _func;

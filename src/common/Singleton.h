@@ -1,3 +1,4 @@
+// Singleton.h - 线程安全的单例模板基类
 #pragma once
 #include <iostream>
 

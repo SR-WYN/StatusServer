@@ -1,14 +1,15 @@
 // StatusServer.cpp - 网关服务器入口
 #include "ConfigMgr.h"
 #include "Log.h"
-#include "RedisNodeRegistry.h"
+#include "RedisNodeRegistryImpl.h"
 #include "StatusServiceImpl.h"
 
-#include <csignal>
 #include <grpcpp/grpcpp.h>
-#include <iostream>
+
 #include <atomic>
 #include <chrono>
+#include <csignal>
+#include <iostream>
 #include <thread>
 
 // 全局 g_server 指针
@@ -17,14 +18,17 @@ static std::unique_ptr<grpc::Server> g_server;
 // 关键：使用原子标志位在信号处理器和主线程间安全通信
 static std::atomic<bool> g_quit{false};
 
-void signalHandler(int signal) {
+void signalHandler(int signal)
+{
     g_quit.store(true);
 }
 
-void runServer() {
+void runServer()
+{
     // 1. 初始化配置与日志
     ConfigMgr::getInstance();
-    if (!Log::init("StatusServer", ConfigMgr::getInstance().getLogConfig())) {
+    if (!Log::init("StatusServer", ConfigMgr::getInstance().getLogConfig()))
+    {
         return;
     }
     Log::info(LogModule::App, "StatusServer starting");
@@ -38,11 +42,11 @@ void runServer() {
     sigaction(SIGTERM, &sa, nullptr);
 
     // 3. 构建依赖：创建 Redis 实现的节点注册中心
-    auto registry = std::make_shared<RedisNodeRegistry>();
+    auto registry = std::make_shared<RedisNodeRegistryImpl>();
     StatusServiceImpl service(registry);
 
     // 4. 构建 gRPC 服务
-    auto& cfg = ConfigMgr::getInstance();
+    auto &cfg = ConfigMgr::getInstance();
     std::string server_address(cfg["StatusServer"]["Host"] + ":" + cfg["StatusServer"]["Port"]);
 
     grpc::ServerBuilder builder;
@@ -55,13 +59,15 @@ void runServer() {
     // 5. 核心：优雅退出的调度循环
     // 不直接调用 g_server->Wait()，而是采用轮询检测
     // 这保证了 Shutdown() 的调用方永远是主线程
-    while (!g_quit.load()) {
+    while (!g_quit.load())
+    {
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
 
     // 6. 优雅清理资源
     Log::info(LogModule::App, "Signal received, initiating graceful shutdown...");
-    if (g_server) {
+    if (g_server)
+    {
         g_server->Shutdown(); // 通知 gRPC 停止接受请求并完成现有处理
     }
 
@@ -73,10 +79,14 @@ void runServer() {
     Log::shutdown();
 }
 
-int main(int argc, char** argv) {
-    try {
+int main(int argc, char **argv)
+{
+    try
+    {
         runServer();
-    } catch (std::exception const& e) {
+    }
+    catch (std::exception const &e)
+    {
         Log::error(LogModule::App, "StatusServer exception: {}", e.what());
         Log::shutdown();
         return EXIT_FAILURE;

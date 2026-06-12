@@ -57,6 +57,6 @@ endforeach()
 set_source_files_properties(${PROTO_SRCS} ${PROTO_HDRS} PROPERTIES GENERATED TRUE)
 
 # 静态库在链接可执行文件之前编译，需显式依赖生成的 .pb.h，否则 grpc/mysql 等目标先于 protoc 运行
-add_custom_target(status_proto_gen DEPENDS ${PROTO_SRCS} ${PROTO_HDRS})
+add_custom_target(ss_proto_gen DEPENDS ${PROTO_SRCS} ${PROTO_HDRS})
 
 add_subdirectory(src)

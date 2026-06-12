@@ -89,6 +89,16 @@ message UnbindUserRsp {
   int32 error = 1;
 }
 
+message ValidateTokenReq {
+  int32 uid = 1;
+  string token = 2;
+}
+
+message ValidateTokenRsp {
+  int32 error = 1;
+  int32 uid = 2;
+}
+
 service StatusService {
   rpc GetChatServer (GetChatServerReq) returns (GetChatServerRsp);
   rpc RegisterChatNode(RegisterChatNodeReq) returns (RegisterChatNodeRsp);
@@ -97,6 +107,7 @@ service StatusService {
   rpc GetUserChatNode(GetUserChatNodeReq) returns (GetUserChatNodeRsp);
   rpc BindUserToNode(BindUserToNodeReq) returns (BindUserToNodeRsp);
   rpc UnbindUser(UnbindUserReq) returns (UnbindUserRsp);
+  rpc ValidateToken(ValidateTokenReq) returns (ValidateTokenRsp);
 }
 
 message AddFriendReq {
