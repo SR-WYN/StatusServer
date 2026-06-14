@@ -1,5 +1,6 @@
 // StatusServer.cpp - 网关服务器入口
 #include "ConfigMgr.h"
+#include "GateNotifyClientImpl.h"
 #include "Log.h"
 #include "RedisNodeRegistryImpl.h"
 #include "StatusServiceImpl.h"
@@ -27,10 +28,10 @@ void runServer()
 {
     // 1. 初始化配置与日志
     ConfigMgr::getInstance();
-    if (!Log::init("StatusServer", ConfigMgr::getInstance().getLogConfig()))
-    {
-        return;
-    }
+    // if (!Log::init("StatusServer", ConfigMgr::getInstance().getLogConfig()))
+    // {
+    //     return;
+    // }
     Log::info(LogModule::App, "StatusServer starting");
 
     // 2. 注册信号处理 (SIGINT 为 Ctrl+C)
@@ -41,12 +42,24 @@ void runServer()
     sigaction(SIGINT, &sa, nullptr);
     sigaction(SIGTERM, &sa, nullptr);
 
-    // 3. 构建依赖：创建 Redis 实现的节点注册中心
+    // 3. 构建依赖：创建 Redis 实现的节点注册中心和 GateServer 通知客户端
+    auto &cfg = ConfigMgr::getInstance();
     auto registry = std::make_shared<RedisNodeRegistryImpl>();
-    StatusServiceImpl service(registry);
+
+    std::string gate_host = cfg["GateServer"]["Host"];
+    std::string gate_grpc_port = cfg["GateServer"]["GrpcPort"];
+    std::shared_ptr<GateNotifyClient> gate_client;
+    if (!gate_host.empty() && !gate_grpc_port.empty()) {
+        std::string gate_address = gate_host + ":" + gate_grpc_port;
+        gate_client = std::make_shared<GateNotifyClientImpl>(gate_address);
+        Log::info(LogModule::App, "GateNotifyClient created for {}", gate_address);
+    } else {
+        Log::warn(LogModule::App, "GateServer config missing, offline notification disabled");
+    }
+
+    StatusServiceImpl service(registry, gate_client);
 
     // 4. 构建 gRPC 服务
-    auto &cfg = ConfigMgr::getInstance();
     std::string server_address(cfg["StatusServer"]["Host"] + ":" + cfg["StatusServer"]["Port"]);
 
     grpc::ServerBuilder builder;

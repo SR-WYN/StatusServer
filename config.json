@@ -11,5 +11,9 @@
   "StatusServer": {
     "Host": "127.0.0.1",
     "Port": "50052"
+  },
+  "GateServer": {
+    "Host": "127.0.0.1",
+    "GrpcPort": "51052"
   }
 }

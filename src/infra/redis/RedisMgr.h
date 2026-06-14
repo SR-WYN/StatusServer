@@ -39,6 +39,9 @@ public:
     bool sRem(const std::string &key, const std::string &member);
     bool sMembers(const std::string &key, std::vector<std::string> &members);
 
+    // Pub/Sub 操作
+    bool publish(const std::string &channel, const std::string &message);
+
     void close();
 
 private:

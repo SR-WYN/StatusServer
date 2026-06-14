@@ -254,6 +254,20 @@ bool RedisMgr::sMembers(const std::string &key, std::vector<std::string> &member
     }
 }
 
+bool RedisMgr::publish(const std::string &channel, const std::string &message)
+{
+    try
+    {
+        _redis->publish(channel, message);
+        return true;
+    }
+    catch (const sw::redis::Error &e)
+    {
+        Log::error(LogModule::Redis, "PUBLISH {} failed: {}", channel, e.what());
+        return false;
+    }
+}
+
 void RedisMgr::close()
 {
     Log::info(LogModule::Redis, "closing Redis connection");

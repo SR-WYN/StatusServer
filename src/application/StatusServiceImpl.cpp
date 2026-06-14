@@ -6,8 +6,9 @@
 #include "const.h"
 #include "utils.h"
 
-StatusServiceImpl::StatusServiceImpl(std::shared_ptr<NodeRegistry> registry)
-    : _registry(std::move(registry))
+StatusServiceImpl::StatusServiceImpl(std::shared_ptr<NodeRegistry> registry,
+                                           std::shared_ptr<GateNotifyClient> gate_client)
+    : _registry(std::move(registry)), _gate_client(std::move(gate_client))
 {
     Log::info(LogModule::Grpc, "StatusServiceImpl constructed, cleaning up expired nodes");
     _registry->cleanupExpiredNodes();
@@ -172,17 +173,27 @@ Status StatusServiceImpl::UnbindUser(ServerContext *context, const UnbindUserReq
                                      UnbindUserRsp *reply)
 {
     (void)context;
-    Log::info(LogModule::Grpc, "UnbindUser: uid={}", request->uid());
+    int uid = request->uid();
+    Log::info(LogModule::Grpc, "UnbindUser: uid={}", uid);
 
-    if (!_registry->unbindUser(request->uid()))
+    if (!_registry->unbindUser(uid))
     {
-        Log::error(LogModule::Grpc, "UnbindUser: failed to unbind uid={}", request->uid());
+        Log::error(LogModule::Grpc, "UnbindUser: failed to unbind uid={}", uid);
         reply->set_error(ErrorCodes::RPCFAILED);
         return Status::OK;
     }
 
+    // 通过 gRPC 通知 GateServer 用户下线
+    if (_gate_client) {
+        if (!_gate_client->notifyUserOffline(uid)) {
+            Log::warn(LogModule::Grpc, "UnbindUser: failed to notify GateServer for uid={}", uid);
+        } else {
+            Log::info(LogModule::Grpc, "UnbindUser: notified GateServer for uid={}", uid);
+        }
+    }
+
     reply->set_error(ErrorCodes::SUCCESS);
-    Log::info(LogModule::Grpc, "UnbindUser: uid={} unbound successfully", request->uid());
+    Log::info(LogModule::Grpc, "UnbindUser: uid={} unbound successfully", uid);
     return Status::OK;
 }
 

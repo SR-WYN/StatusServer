@@ -39,6 +39,7 @@ constexpr const char *LOGIN_COUNT = "logincount";
 constexpr const char *CHAT_NODES = "chat_nodes";
 constexpr const char *USER_CHAT_NODE = "user_chat_node_";
 constexpr const char *CHAT_NODE_USERS = "chat_node_users_";
+constexpr const char *USER_OFFLINE_CHANNEL = "user_offline";
 } // namespace RedisPrefix
 
 constexpr int CHAT_NODE_TTL_SEC = 30;

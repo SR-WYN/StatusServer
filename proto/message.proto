@@ -99,6 +99,19 @@ message ValidateTokenRsp {
   int32 uid = 2;
 }
 
+// GateServer 通知服务（供 StatusServer 调用）
+message UserOfflineReq {
+  int32 uid = 1;
+}
+
+message UserOfflineRsp {
+  int32 error = 1;
+}
+
+service GateNotifyService {
+  rpc NotifyUserOffline(UserOfflineReq) returns (UserOfflineRsp);
+}
+
 service StatusService {
   rpc GetChatServer (GetChatServerReq) returns (GetChatServerRsp);
   rpc RegisterChatNode(RegisterChatNodeReq) returns (RegisterChatNodeRsp);

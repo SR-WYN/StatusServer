@@ -2,6 +2,7 @@
 // 通过 NodeRegistry 接口管理节点注册、用户绑定等业务逻辑
 #pragma once
 
+#include "GateNotifyClient.h"
 #include "NodeRegistry.h"
 #include "grpcpp/grpcpp.h"
 #include "message.grpc.pb.h"
@@ -35,8 +36,11 @@ using message::ValidateTokenRsp;
 class StatusServiceImpl final : public StatusService::Service
 {
 public:
-    /// 构造函数，接收节点注册中心接口实例
-    explicit StatusServiceImpl(std::shared_ptr<NodeRegistry> registry);
+    /// 构造函数，接收节点注册中心接口实例和 GateServer 通知客户端
+    /// @param registry 节点注册中心
+    /// @param gate_client GateServer 通知客户端（可为 nullptr）
+    StatusServiceImpl(std::shared_ptr<NodeRegistry> registry,
+                      std::shared_ptr<GateNotifyClient> gate_client);
 
     // GateServer 调用：获取一个负载最轻的 ChatServer 地址
     Status GetChatServer(ServerContext *context, const GetChatServerReq *request,
@@ -76,4 +80,7 @@ private:
 
     // 节点注册中心接口（通过依赖注入传入）
     std::shared_ptr<NodeRegistry> _registry;
+
+    // GateServer 通知客户端
+    std::shared_ptr<GateNotifyClient> _gate_client;
 };
