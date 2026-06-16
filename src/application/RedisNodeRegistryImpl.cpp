@@ -157,7 +157,6 @@ bool RedisNodeRegistryImpl::unregisterNode(const std::string &name, const std::s
     for (const auto &uidStr : uids)
     {
         redis.del(std::string(RedisPrefix::USER_CHAT_NODE) + uidStr);
-        redis.del(std::string(RedisPrefix::USERIPPREFIX) + uidStr);
     }
 
     redis.del(usersKey);
@@ -299,7 +298,6 @@ bool RedisNodeRegistryImpl::bindUser(int uid, const std::string &node_name)
     }
 
     redis.set(std::string(RedisPrefix::USER_CHAT_NODE) + uidStr, node_name);
-    redis.set(std::string(RedisPrefix::USERIPPREFIX) + uidStr, node_name);
     redis.sAdd(std::string(RedisPrefix::CHAT_NODE_USERS) + node_name, uidStr);
 
     // 原子增加该节点的登录计数
@@ -331,7 +329,6 @@ bool RedisNodeRegistryImpl::unbindUser(int uid)
     }
 
     redis.del(std::string(RedisPrefix::USER_CHAT_NODE) + uidStr);
-    redis.del(std::string(RedisPrefix::USERIPPREFIX) + uidStr);
 
     // 原子减少该节点的登录计数
     if (!nodeName.empty())
