@@ -302,6 +302,11 @@ bool RedisNodeRegistryImpl::bindUser(int uid, const std::string &node_name)
     redis.set(std::string(RedisPrefix::USERIPPREFIX) + uidStr, node_name);
     redis.sAdd(std::string(RedisPrefix::CHAT_NODE_USERS) + node_name, uidStr);
 
+    // 原子增加该节点的登录计数
+    auto newCount = RedisMgr::getInstance().hIncrBy(RedisPrefix::LOGIN_COUNT, node_name, 1);
+    Log::info(LogModule::Registry, "bindUser: node {} login count incremented to {}", node_name,
+              newCount);
+
     Log::info(LogModule::Registry, "bindUser: user {} bound to node {}", uid, node_name);
     return true;
 }
@@ -327,6 +332,23 @@ bool RedisNodeRegistryImpl::unbindUser(int uid)
 
     redis.del(std::string(RedisPrefix::USER_CHAT_NODE) + uidStr);
     redis.del(std::string(RedisPrefix::USERIPPREFIX) + uidStr);
+
+    // 原子减少该节点的登录计数
+    if (!nodeName.empty())
+    {
+        auto newCount = RedisMgr::getInstance().hIncrBy(RedisPrefix::LOGIN_COUNT, nodeName, -1);
+        if (newCount <= 0)
+        {
+            RedisMgr::getInstance().hDel(RedisPrefix::LOGIN_COUNT, nodeName);
+            Log::info(LogModule::Registry,
+                      "unbindUser: node {} login count removed (reached 0)", nodeName);
+        }
+        else
+        {
+            Log::info(LogModule::Registry, "unbindUser: node {} login count decremented to {}",
+                      nodeName, newCount);
+        }
+    }
 
     Log::info(LogModule::Registry, "unbindUser: user {} unbound", uid);
     return true;

@@ -27,6 +27,7 @@ public:
     std::string hGet(const std::string &key, const std::string &field);
     bool hDel(const std::string &key, const std::string &field);
     bool hGetAll(const std::string &key, std::map<std::string, std::string> &out);
+    long long hIncrBy(const std::string &key, const std::string &field, long long increment);
 
     // List 操作
     bool lPush(const std::string &key, const std::string &value);

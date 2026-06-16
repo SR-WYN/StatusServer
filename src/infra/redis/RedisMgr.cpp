@@ -149,6 +149,20 @@ bool RedisMgr::hGetAll(const std::string &key, std::map<std::string, std::string
     }
 }
 
+long long RedisMgr::hIncrBy(const std::string &key, const std::string &field, long long increment)
+{
+    try
+    {
+        return _redis->hincrby(key, field, increment);
+    }
+    catch (const sw::redis::Error &e)
+    {
+        Log::error(LogModule::Redis, "HINCRBY {} {} {} failed: {}", key, field, increment,
+                   e.what());
+        return 0;
+    }
+}
+
 bool RedisMgr::lPush(const std::string &key, const std::string &value)
 {
     try
