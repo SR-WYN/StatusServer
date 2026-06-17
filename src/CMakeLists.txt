@@ -28,7 +28,12 @@ add_executable(${PROJECT_NAME}
 # 可执行文件放在顶层 build/，便于运行 ./build/StatusServer（add_executable 在 src/ 时默认会生成 build/src/）
 set_target_properties(${PROJECT_NAME} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}"
 )
+
+# 确保 proto 文件先生成，再编译可执行文件
+add_dependencies(${PROJECT_NAME} ss_proto_gen)
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${PROTO_GEN_DIR})
 
