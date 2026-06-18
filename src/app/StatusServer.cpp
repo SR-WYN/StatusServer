@@ -49,11 +49,14 @@ void runServer()
     std::string gate_host = cfg["GateServer"]["Host"];
     std::string gate_grpc_port = cfg["GateServer"]["GrpcPort"];
     std::shared_ptr<GateNotifyClient> gate_client;
-    if (!gate_host.empty() && !gate_grpc_port.empty()) {
+    if (!gate_host.empty() && !gate_grpc_port.empty())
+    {
         std::string gate_address = gate_host + ":" + gate_grpc_port;
         gate_client = std::make_shared<GateNotifyClientImpl>(gate_address);
         Log::info(LogModule::App, "GateNotifyClient created for {}", gate_address);
-    } else {
+    }
+    else
+    {
         Log::warn(LogModule::App, "GateServer config missing, offline notification disabled");
     }
 

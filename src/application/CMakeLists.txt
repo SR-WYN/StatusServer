@@ -1,9 +1,18 @@
-add_library(ss_application STATIC StatusServiceImpl.cpp RedisNodeRegistryImpl.cpp GateNotifyClientImpl.cpp)
+add_library(ss_application STATIC
+    interface/NodeRegistry.h
+    interface/GateNotifyClient.h
+    impl/StatusServiceImpl.cpp
+    impl/RedisNodeRegistryImpl.cpp
+    impl/GateNotifyClientImpl.cpp
+)
+
 add_dependencies(ss_application ss_proto_gen)
+
 target_link_libraries(ss_application PUBLIC
     ss_includes
     ss_domain
-    ss_common
-    ss_config
-    ss_redis
+    ss_infra
+    gRPC::grpc++
+    gRPC::grpc++_reflection
+    protobuf::libprotobuf
 )

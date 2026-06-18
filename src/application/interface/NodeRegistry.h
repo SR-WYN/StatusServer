@@ -57,4 +57,10 @@ public:
 
     // 清理所有已过期的节点记录及其登录计数。
     virtual void cleanupExpiredNodes() = 0;
+
+    // 保存用户登录 token（供 StatusServiceImpl::insertToken 使用）。
+    virtual bool saveToken(int uid, const std::string &token) = 0;
+
+    // 验证用户 token。返回错误码：SUCCESS / UID_INVALID / TOKEN_INVALID。
+    virtual int validateToken(int uid, const std::string &token) = 0;
 };

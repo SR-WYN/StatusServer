@@ -5,18 +5,20 @@ set_source_files_properties(${PROTO_SRCS} PROPERTIES GENERATED TRUE)
 
 add_library(ss_includes INTERFACE)
 target_include_directories(ss_includes INTERFACE
-    ${CMAKE_CURRENT_SOURCE_DIR}/common
     ${CMAKE_CURRENT_SOURCE_DIR}/domain
     ${CMAKE_CURRENT_SOURCE_DIR}/application
+    ${CMAKE_CURRENT_SOURCE_DIR}/application/interface
+    ${CMAKE_CURRENT_SOURCE_DIR}/application/impl
+    ${CMAKE_CURRENT_SOURCE_DIR}/infra
+    ${CMAKE_CURRENT_SOURCE_DIR}/infra/base
+    ${CMAKE_CURRENT_SOURCE_DIR}/infra/log
     ${CMAKE_CURRENT_SOURCE_DIR}/infra/config
     ${CMAKE_CURRENT_SOURCE_DIR}/infra/redis
     ${PROTO_GEN_DIR}
 )
 
-add_subdirectory(common)
 add_subdirectory(domain)
-add_subdirectory(infra/config)
-add_subdirectory(infra/redis)
+add_subdirectory(infra)
 add_subdirectory(application)
 add_subdirectory(app)
 
@@ -41,9 +43,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     ss_includes
     ss_app_dir
     ss_application
-    ss_common
-    ss_config
-    ss_redis
+    ss_infra
     Boost::system
     Boost::thread
     Boost::filesystem

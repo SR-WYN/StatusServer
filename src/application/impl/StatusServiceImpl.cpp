@@ -1,13 +1,13 @@
 // StatusServiceImpl.cpp — gRPC 服务实现
 // 通过 NodeRegistry 接口转发所有节点注册/发现/绑定的业务逻辑
 #include "StatusServiceImpl.h"
+
 #include "Log.h"
-#include "RedisMgr.h"
 #include "const.h"
 #include "utils.h"
 
 StatusServiceImpl::StatusServiceImpl(std::shared_ptr<NodeRegistry> registry,
-                                           std::shared_ptr<GateNotifyClient> gate_client)
+                                     std::shared_ptr<GateNotifyClient> gate_client)
     : _registry(std::move(registry)), _gate_client(std::move(gate_client))
 {
     Log::info(LogModule::Grpc, "StatusServiceImpl constructed, cleaning up expired nodes");
@@ -42,9 +42,11 @@ Status StatusServiceImpl::GetChatServer(ServerContext *context, const GetChatSer
 
 void StatusServiceImpl::insertToken(int uid, const std::string &token)
 {
-    std::string uidStr = std::to_string(uid);
-    std::string tokenKey = RedisPrefix::USERTOKENPREFIX + uidStr;
-    RedisMgr::getInstance().set(tokenKey, token);
+    if (!_registry->saveToken(uid, token))
+    {
+        Log::warn(LogModule::Grpc, "insertToken: failed to save token for uid={}", uid);
+        return;
+    }
     Log::debug(LogModule::Grpc, "insertToken: uid={} token={}", uid, token);
 }
 
@@ -184,10 +186,14 @@ Status StatusServiceImpl::UnbindUser(ServerContext *context, const UnbindUserReq
     }
 
     // 通过 gRPC 通知 GateServer 用户下线
-    if (_gate_client) {
-        if (!_gate_client->notifyUserOffline(uid)) {
+    if (_gate_client)
+    {
+        if (!_gate_client->notifyUserOffline(uid))
+        {
             Log::warn(LogModule::Grpc, "UnbindUser: failed to notify GateServer for uid={}", uid);
-        } else {
+        }
+        else
+        {
             Log::info(LogModule::Grpc, "UnbindUser: notified GateServer for uid={}", uid);
         }
     }
@@ -203,21 +209,10 @@ Status StatusServiceImpl::ValidateToken(ServerContext *context, const ValidateTo
     (void)context;
     Log::info(LogModule::Grpc, "ValidateToken: uid={}", request->uid());
 
-    std::string uid_str = std::to_string(request->uid());
-    std::string token_key = RedisPrefix::USERTOKENPREFIX + uid_str;
-    std::string stored_token;
-
-    if (!RedisMgr::getInstance().get(token_key, stored_token))
+    int err = _registry->validateToken(request->uid(), request->token());
+    if (err != ErrorCodes::SUCCESS)
     {
-        Log::warn(LogModule::Grpc, "ValidateToken: no token found for uid={}", request->uid());
-        reply->set_error(ErrorCodes::UID_INVALID);
-        return Status::OK;
-    }
-
-    if (stored_token != request->token())
-    {
-        Log::warn(LogModule::Grpc, "ValidateToken: token mismatch for uid={}", request->uid());
-        reply->set_error(ErrorCodes::TOKEN_INVALID);
+        reply->set_error(err);
         return Status::OK;
     }
 

@@ -22,15 +22,17 @@ bool GateNotifyClientImpl::notifyUserOffline(int uid)
     grpc::ClientContext context;
 
     grpc::Status status = _stub->NotifyUserOffline(&context, request, &response);
-    if (!status.ok()) {
-        Log::error(LogModule::Grpc, "NotifyUserOffline failed: uid={}, error={}",
-                   uid, status.error_message());
+    if (!status.ok())
+    {
+        Log::error(LogModule::Grpc, "NotifyUserOffline failed: uid={}, error={}", uid,
+                   status.error_message());
         return false;
     }
 
-    if (response.error() != ErrorCodes::SUCCESS) {
-        Log::warn(LogModule::Grpc, "NotifyUserOffline returned error: uid={}, error_code={}",
-                  uid, response.error());
+    if (response.error() != ErrorCodes::SUCCESS)
+    {
+        Log::warn(LogModule::Grpc, "NotifyUserOffline returned error: uid={}, error_code={}", uid,
+                  response.error());
         return false;
     }
 

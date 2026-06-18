@@ -62,6 +62,40 @@ bool RedisNodeRegistryImpl::isAlive(const NodeInfo &node)
     return node.expire_at >= utils::nowSec();
 }
 
+// 保存用户 token 到 Redis
+bool RedisNodeRegistryImpl::saveToken(int uid, const std::string &token)
+{
+    std::string uidStr = std::to_string(uid);
+    std::string tokenKey = RedisPrefix::USERTOKENPREFIX + uidStr;
+    bool ok = RedisMgr::getInstance().set(tokenKey, token);
+    if (!ok)
+    {
+        Log::warn(LogModule::Registry, "saveToken: failed for uid={}", uid);
+        return false;
+    }
+    Log::debug(LogModule::Registry, "saveToken: uid={} token={}", uid, token);
+    return true;
+}
+
+// 验证用户 token
+int RedisNodeRegistryImpl::validateToken(int uid, const std::string &token)
+{
+    std::string uidStr = std::to_string(uid);
+    std::string tokenKey = RedisPrefix::USERTOKENPREFIX + uidStr;
+    std::string storedToken;
+    if (!RedisMgr::getInstance().get(tokenKey, storedToken))
+    {
+        Log::warn(LogModule::Registry, "validateToken: no token found for uid={}", uid);
+        return ErrorCodes::UID_INVALID;
+    }
+    if (storedToken != token)
+    {
+        Log::warn(LogModule::Registry, "validateToken: token mismatch for uid={}", uid);
+        return ErrorCodes::TOKEN_INVALID;
+    }
+    return ErrorCodes::SUCCESS;
+}
+
 // 清理 Redis 中所有已过期的节点记录及其登录计数
 void RedisNodeRegistryImpl::cleanupExpiredNodes()
 {
@@ -337,8 +371,8 @@ bool RedisNodeRegistryImpl::unbindUser(int uid)
         if (newCount <= 0)
         {
             RedisMgr::getInstance().hDel(RedisPrefix::LOGIN_COUNT, nodeName);
-            Log::info(LogModule::Registry,
-                      "unbindUser: node {} login count removed (reached 0)", nodeName);
+            Log::info(LogModule::Registry, "unbindUser: node {} login count removed (reached 0)",
+                      nodeName);
         }
         else
         {

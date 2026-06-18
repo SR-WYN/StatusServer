@@ -29,6 +29,8 @@ public:
     bool unbindUser(int uid) override;
     std::optional<NodeInfo> selectLeastLoadedNode() override;
     void cleanupExpiredNodes() override;
+    bool saveToken(int uid, const std::string &token) override;
+    int validateToken(int uid, const std::string &token) override;
 
 private:
     // 将 NodeInfo 序列化为 JSON 字符串
