@@ -3,6 +3,7 @@
 #include "StatusServiceImpl.h"
 
 #include "Log.h"
+#include "ThreadPoolMgr.h"
 #include "const.h"
 #include "utils.h"
 
@@ -185,17 +186,22 @@ Status StatusServiceImpl::UnbindUser(ServerContext *context, const UnbindUserReq
         return Status::OK;
     }
 
-    // 通过 gRPC 通知 GateServer 用户下线
+    // 通过 gRPC 通知 GateServer 用户下线（投递到 gRPC 客户端池，不阻塞当前线程）
     if (_gate_client)
     {
-        if (!_gate_client->notifyUserOffline(uid))
-        {
-            Log::warn(LogModule::Grpc, "UnbindUser: failed to notify GateServer for uid={}", uid);
-        }
-        else
-        {
-            Log::info(LogModule::Grpc, "UnbindUser: notified GateServer for uid={}", uid);
-        }
+        int uidCopy = uid;
+        auto gateClient = _gate_client;
+        ThreadPoolMgr::getInstance().enqueueGrpcClient([gateClient, uidCopy]() {
+            if (!gateClient->notifyUserOffline(uidCopy))
+            {
+                Log::warn(LogModule::Grpc, "UnbindUser: failed to notify GateServer for uid={}",
+                          uidCopy);
+            }
+            else
+            {
+                Log::info(LogModule::Grpc, "UnbindUser: notified GateServer for uid={}", uidCopy);
+            }
+        });
     }
 
     reply->set_error(ErrorCodes::SUCCESS);

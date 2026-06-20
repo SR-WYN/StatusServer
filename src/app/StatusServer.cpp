@@ -1,9 +1,10 @@
-// StatusServer.cpp - 网关服务器入口
+// StatusServer.cpp - 状态服务器入口
 #include "ConfigMgr.h"
 #include "GateNotifyClientImpl.h"
 #include "Log.h"
 #include "RedisNodeRegistryImpl.h"
 #include "StatusServiceImpl.h"
+#include "ThreadPoolMgr.h"
 
 #include <grpcpp/grpcpp.h>
 
@@ -28,10 +29,10 @@ void runServer()
 {
     // 1. 初始化配置与日志
     ConfigMgr::getInstance();
-    // if (!Log::init("StatusServer", ConfigMgr::getInstance().getLogConfig()))
-    // {
-    //     return;
-    // }
+    if (!Log::init("StatusServer", ConfigMgr::getInstance().getLogConfig()))
+    {
+        return;
+    }
     Log::info(LogModule::App, "StatusServer starting");
 
     // 2. 注册信号处理 (SIGINT 为 Ctrl+C)
@@ -61,6 +62,9 @@ void runServer()
     }
 
     StatusServiceImpl service(registry, gate_client);
+
+    // 初始化线程池管理器
+    ThreadPoolMgr::getInstance();
 
     // 4. 构建 gRPC 服务
     std::string server_address(cfg["StatusServer"]["Host"] + ":" + cfg["StatusServer"]["Port"]);
