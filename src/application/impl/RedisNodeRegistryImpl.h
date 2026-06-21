@@ -6,7 +6,7 @@
 #include <string>
 
 // Redis 实现的节点注册中心。
-// 节点信息以 JSON 格式存储在 Redis Hash 中（key: chat_nodes, field: 节点名），
+// 节点信息以 JSON 格式存储在 Redis Hash 中（key: registered_nodes, field: 节点名），
 // 用户与节点的绑定关系通过 KV + Set 结构维护。
 class RedisNodeRegistryImpl : public NodeRegistry
 {

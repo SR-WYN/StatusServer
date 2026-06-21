@@ -17,17 +17,17 @@ using message::BindUserToNodeReq;
 using message::BindUserToNodeRsp;
 using message::GetChatServerReq;
 using message::GetChatServerRsp;
-using message::GetUserChatNodeReq;
-using message::GetUserChatNodeRsp;
-using message::HeartbeatChatNodeReq;
-using message::HeartbeatChatNodeRsp;
-using message::RegisterChatNodeReq;
-using message::RegisterChatNodeRsp;
+using message::GetUserNodeReq;
+using message::GetUserNodeRsp;
+using message::HeartbeatNodeReq;
+using message::HeartbeatNodeRsp;
+using message::RegisterNodeReq;
+using message::RegisterNodeRsp;
 using message::StatusService;
 using message::UnbindUserReq;
 using message::UnbindUserRsp;
-using message::UnregisterChatNodeReq;
-using message::UnregisterChatNodeRsp;
+using message::UnregisterNodeReq;
+using message::UnregisterNodeRsp;
 using message::ValidateTokenReq;
 using message::ValidateTokenRsp;
 
@@ -47,20 +47,20 @@ public:
                          GetChatServerRsp *reply) override;
 
     // ChatServer 调用：注册节点到注册中心
-    Status RegisterChatNode(ServerContext *context, const RegisterChatNodeReq *request,
-                            RegisterChatNodeRsp *reply) override;
+    Status RegisterNode(ServerContext *context, const RegisterNodeReq *request,
+                        RegisterNodeRsp *reply) override;
 
     // ChatServer 调用：从注册中心注销节点
-    Status UnregisterChatNode(ServerContext *context, const UnregisterChatNodeReq *request,
-                              UnregisterChatNodeRsp *reply) override;
+    Status UnregisterNode(ServerContext *context, const UnregisterNodeReq *request,
+                          UnregisterNodeRsp *reply) override;
 
     // ChatServer 调用：节点心跳续期
-    Status HeartbeatChatNode(ServerContext *context, const HeartbeatChatNodeReq *request,
-                             HeartbeatChatNodeRsp *reply) override;
+    Status HeartbeatNode(ServerContext *context, const HeartbeatNodeReq *request,
+                         HeartbeatNodeRsp *reply) override;
 
     // GateServer 调用：查询用户当前绑定的节点
-    Status GetUserChatNode(ServerContext *context, const GetUserChatNodeReq *request,
-                           GetUserChatNodeRsp *reply) override;
+    Status GetUserNode(ServerContext *context, const GetUserNodeReq *request,
+                       GetUserNodeRsp *reply) override;
 
     // ChatServer 调用：将用户绑定到当前节点
     Status BindUserToNode(ServerContext *context, const BindUserToNodeReq *request,

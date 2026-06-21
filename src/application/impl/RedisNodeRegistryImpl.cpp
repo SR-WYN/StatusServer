@@ -100,7 +100,7 @@ int RedisNodeRegistryImpl::validateToken(int uid, const std::string &token)
 void RedisNodeRegistryImpl::cleanupExpiredNodes()
 {
     std::map<std::string, std::string> all;
-    if (!RedisMgr::getInstance().hGetAll(RedisPrefix::CHAT_NODES, all))
+    if (!RedisMgr::getInstance().hGetAll(RedisPrefix::REGISTERED_NODES, all))
     {
         Log::warn(LogModule::Registry, "cleanupExpiredNodes: failed to get all nodes from Redis");
         return;
@@ -113,7 +113,7 @@ void RedisNodeRegistryImpl::cleanupExpiredNodes()
         node.name = entry.first;
         if (!parseNode(entry.second, node) || !isAlive(node))
         {
-            RedisMgr::getInstance().hDel(RedisPrefix::CHAT_NODES, entry.first);
+            RedisMgr::getInstance().hDel(RedisPrefix::REGISTERED_NODES, entry.first);
             RedisMgr::getInstance().hDel(RedisPrefix::LOGIN_COUNT, entry.first);
             ++cleaned;
             Log::info(LogModule::Registry, "cleanupExpiredNodes: removed expired node {}",
@@ -147,17 +147,17 @@ bool RedisNodeRegistryImpl::registerNode(const NodeInfo &node)
     }
 
     NodeInfo stored = node;
-    stored.expire_at = utils::nowSec() + CHAT_NODE_TTL_SEC;
+    stored.expire_at = utils::nowSec() + NODE_TTL_SEC;
 
     auto &redis = RedisMgr::getInstance();
-    if (!redis.hSet(RedisPrefix::CHAT_NODES, node.name, serializeNode(stored)))
+    if (!redis.hSet(RedisPrefix::REGISTERED_NODES, node.name, serializeNode(stored)))
     {
         Log::error(LogModule::Registry, "registerNode: failed to save node {} to Redis", node.name);
         return false;
     }
 
     redis.hSet(RedisPrefix::LOGIN_COUNT, node.name, "0");
-    Log::info(LogModule::Registry, "registerNode: registered chat node {} instance {}", node.name,
+    Log::info(LogModule::Registry, "registerNode: registered node {} instance {}", node.name,
               node.instance_id);
     return true;
 }
@@ -183,18 +183,18 @@ bool RedisNodeRegistryImpl::unregisterNode(const std::string &name, const std::s
     auto &redis = RedisMgr::getInstance();
 
     // 清理该节点绑定的所有用户
-    const std::string usersKey = std::string(RedisPrefix::CHAT_NODE_USERS) + name;
+    const std::string usersKey = std::string(RedisPrefix::NODE_USERS) + name;
     std::vector<std::string> uids;
     redis.sMembers(usersKey, uids);
     Log::info(LogModule::Registry, "unregisterNode: removing node {}, clearing {} bound user(s)",
               name, uids.size());
     for (const auto &uidStr : uids)
     {
-        redis.del(std::string(RedisPrefix::USER_CHAT_NODE) + uidStr);
+        redis.del(std::string(RedisPrefix::USER_NODE) + uidStr);
     }
 
     redis.del(usersKey);
-    redis.hDel(RedisPrefix::CHAT_NODES, name);
+    redis.hDel(RedisPrefix::REGISTERED_NODES, name);
     redis.hDel(RedisPrefix::LOGIN_COUNT, name);
 
     Log::info(LogModule::Registry, "unregisterNode: unregistered node {}", name);
@@ -214,9 +214,9 @@ bool RedisNodeRegistryImpl::heartbeat(const std::string &name, const std::string
     }
 
     NodeInfo updated = *existing;
-    updated.expire_at = utils::nowSec() + CHAT_NODE_TTL_SEC;
+    updated.expire_at = utils::nowSec() + NODE_TTL_SEC;
 
-    bool ok = RedisMgr::getInstance().hSet(RedisPrefix::CHAT_NODES, name, serializeNode(updated));
+    bool ok = RedisMgr::getInstance().hSet(RedisPrefix::REGISTERED_NODES, name, serializeNode(updated));
     if (ok)
     {
         Log::debug(LogModule::Registry, "heartbeat: renewed node {} instance {}", name,
@@ -232,7 +232,7 @@ bool RedisNodeRegistryImpl::heartbeat(const std::string &name, const std::string
 // 按名称查询节点，若不存在或已过期返回 nullopt
 std::optional<NodeInfo> RedisNodeRegistryImpl::getNode(const std::string &name)
 {
-    const std::string json = RedisMgr::getInstance().hGet(RedisPrefix::CHAT_NODES, name);
+    const std::string json = RedisMgr::getInstance().hGet(RedisPrefix::REGISTERED_NODES, name);
     if (json.empty())
     {
         Log::debug(LogModule::Registry, "getNode: node {} not found in Redis", name);
@@ -255,7 +255,7 @@ std::vector<NodeInfo> RedisNodeRegistryImpl::listNodes()
     std::vector<NodeInfo> result;
     std::map<std::string, std::string> all;
 
-    if (!RedisMgr::getInstance().hGetAll(RedisPrefix::CHAT_NODES, all))
+    if (!RedisMgr::getInstance().hGetAll(RedisPrefix::REGISTERED_NODES, all))
     {
         Log::warn(LogModule::Registry, "listNodes: failed to get all nodes from Redis");
         return result;
@@ -279,7 +279,7 @@ std::vector<NodeInfo> RedisNodeRegistryImpl::listNodes()
 std::optional<NodeInfo> RedisNodeRegistryImpl::getNodeForUser(int uid)
 {
     std::string nodeName;
-    if (!RedisMgr::getInstance().get(std::string(RedisPrefix::USER_CHAT_NODE) + std::to_string(uid),
+    if (!RedisMgr::getInstance().get(std::string(RedisPrefix::USER_NODE) + std::to_string(uid),
                                      nodeName) ||
         nodeName.empty())
     {
@@ -323,16 +323,16 @@ bool RedisNodeRegistryImpl::bindUser(int uid, const std::string &node_name)
 
     // 检查用户是否已绑定到其他节点，若是则解绑旧关系
     std::string oldNode;
-    if (redis.get(std::string(RedisPrefix::USER_CHAT_NODE) + uidStr, oldNode) && !oldNode.empty() &&
+    if (redis.get(std::string(RedisPrefix::USER_NODE) + uidStr, oldNode) && !oldNode.empty() &&
         oldNode != node_name)
     {
-        redis.sRem(std::string(RedisPrefix::CHAT_NODE_USERS) + oldNode, uidStr);
+        redis.sRem(std::string(RedisPrefix::NODE_USERS) + oldNode, uidStr);
         Log::info(LogModule::Registry, "bindUser: moved user {} from old node {} to {}", uid,
                   oldNode, node_name);
     }
 
-    redis.set(std::string(RedisPrefix::USER_CHAT_NODE) + uidStr, node_name);
-    redis.sAdd(std::string(RedisPrefix::CHAT_NODE_USERS) + node_name, uidStr);
+    redis.set(std::string(RedisPrefix::USER_NODE) + uidStr, node_name);
+    redis.sAdd(std::string(RedisPrefix::NODE_USERS) + node_name, uidStr);
 
     // 原子增加该节点的登录计数
     auto newCount = RedisMgr::getInstance().hIncrBy(RedisPrefix::LOGIN_COUNT, node_name, 1);
@@ -356,13 +356,13 @@ bool RedisNodeRegistryImpl::unbindUser(int uid)
     auto &redis = RedisMgr::getInstance();
 
     std::string nodeName;
-    if (redis.get(std::string(RedisPrefix::USER_CHAT_NODE) + uidStr, nodeName) && !nodeName.empty())
+    if (redis.get(std::string(RedisPrefix::USER_NODE) + uidStr, nodeName) && !nodeName.empty())
     {
-        redis.sRem(std::string(RedisPrefix::CHAT_NODE_USERS) + nodeName, uidStr);
+        redis.sRem(std::string(RedisPrefix::NODE_USERS) + nodeName, uidStr);
         Log::info(LogModule::Registry, "unbindUser: removed user {} from node {}", uid, nodeName);
     }
 
-    redis.del(std::string(RedisPrefix::USER_CHAT_NODE) + uidStr);
+    redis.del(std::string(RedisPrefix::USER_NODE) + uidStr);
 
     // 原子减少该节点的登录计数
     if (!nodeName.empty())

@@ -35,10 +35,10 @@ constexpr const char *USERTOKENPREFIX = "utoken_";
 constexpr const char *IPCOUNTPREFIX = "ipcount_";
 constexpr const char *USER_BASE_INFO = "ubaseinfo_";
 constexpr const char *LOGIN_COUNT = "logincount";
-constexpr const char *CHAT_NODES = "chat_nodes";
-constexpr const char *USER_CHAT_NODE = "user_chat_node_";
-constexpr const char *CHAT_NODE_USERS = "chat_node_users_";
+constexpr const char *REGISTERED_NODES = "registered_nodes";
+constexpr const char *USER_NODE = "user_node_";
+constexpr const char *NODE_USERS = "node_users_";
 constexpr const char *USER_OFFLINE_CHANNEL = "user_offline";
 } // namespace RedisPrefix
 
-constexpr int CHAT_NODE_TTL_SEC = 30;
+constexpr int NODE_TTL_SEC = 30;
