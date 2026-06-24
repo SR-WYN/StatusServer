@@ -395,11 +395,18 @@ std::optional<NodeInfo> RedisNodeRegistryImpl::selectLeastLoadedNode()
         return std::nullopt;
     }
 
-    NodeInfo best = nodes.front();
+    NodeInfo best;
     int bestCount = INT_MAX;
 
     for (const auto &node : nodes)
     {
+        if (node.name.find("Node-") != 0)
+        {
+            Log::debug(LogModule::Registry,
+                       "selectLeastLoadedNode: skip non-ChatServer node {}", node.name);
+            continue;
+        }
+
         auto countStr = RedisMgr::getInstance().hGet(RedisPrefix::LOGIN_COUNT, node.name);
         int count = countStr.empty() ? INT_MAX : std::stoi(countStr);
         if (count < bestCount)
@@ -407,6 +414,12 @@ std::optional<NodeInfo> RedisNodeRegistryImpl::selectLeastLoadedNode()
             bestCount = count;
             best = node;
         }
+    }
+
+    if (best.name.empty())
+    {
+        Log::warn(LogModule::Registry, "selectLeastLoadedNode: no ChatServer node available");
+        return std::nullopt;
     }
 
     Log::info(LogModule::Registry, "selectLeastLoadedNode: selected node {} with {} login(s)",
