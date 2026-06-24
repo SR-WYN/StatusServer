@@ -32,6 +32,7 @@ namespace RedisPrefix
 {
 constexpr const char *CODE = "code_";
 constexpr const char *USERTOKENPREFIX = "utoken_";
+constexpr const char *FILETOKENPREFIX = "ftoken_";
 constexpr const char *IPCOUNTPREFIX = "ipcount_";
 constexpr const char *USER_BASE_INFO = "ubaseinfo_";
 constexpr const char *LOGIN_COUNT = "logincount";

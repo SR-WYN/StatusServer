@@ -1,8 +1,10 @@
 add_library(ss_application STATIC
     interface/NodeRegistry.h
     interface/GateNotifyClient.h
+    interface/FileTokenRepository.h
     impl/StatusServiceImpl.cpp
     impl/RedisNodeRegistryImpl.cpp
+    impl/RedisFileTokenRepositoryImpl.cpp
     impl/GateNotifyClientImpl.cpp
 )
 

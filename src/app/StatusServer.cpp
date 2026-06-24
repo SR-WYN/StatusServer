@@ -2,6 +2,7 @@
 #include "ConfigMgr.h"
 #include "GateNotifyClientImpl.h"
 #include "Log.h"
+#include "RedisFileTokenRepositoryImpl.h"
 #include "RedisNodeRegistryImpl.h"
 #include "StatusServiceImpl.h"
 #include "ThreadPoolMgr.h"
@@ -43,9 +44,10 @@ void runServer()
     sigaction(SIGINT, &sa, nullptr);
     sigaction(SIGTERM, &sa, nullptr);
 
-    // 3. 构建依赖：创建 Redis 实现的节点注册中心和 GateServer 通知客户端
+    // 3. 构建依赖：创建 Redis 实现的节点注册中心、文件 token 仓库和 GateServer 通知客户端
     auto &cfg = ConfigMgr::getInstance();
     auto registry = std::make_shared<RedisNodeRegistryImpl>();
+    auto file_token_repo = std::make_shared<RedisFileTokenRepositoryImpl>();
 
     std::string gate_host = cfg["GateServer"]["Host"];
     std::string gate_grpc_port = cfg["GateServer"]["GrpcPort"];
@@ -61,7 +63,7 @@ void runServer()
         Log::warn(LogModule::App, "GateServer config missing, offline notification disabled");
     }
 
-    StatusServiceImpl service(registry, gate_client);
+    StatusServiceImpl service(registry, file_token_repo, gate_client);
 
     // 初始化线程池管理器
     ThreadPoolMgr::getInstance();

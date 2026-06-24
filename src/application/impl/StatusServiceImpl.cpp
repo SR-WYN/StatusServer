@@ -8,8 +8,11 @@
 #include "utils.h"
 
 StatusServiceImpl::StatusServiceImpl(std::shared_ptr<NodeRegistry> registry,
+                                     std::shared_ptr<FileTokenRepository> file_token_repo,
                                      std::shared_ptr<GateNotifyClient> gate_client)
-    : _registry(std::move(registry)), _gate_client(std::move(gate_client))
+    : _registry(std::move(registry)),
+      _file_token_repo(std::move(file_token_repo)),
+      _gate_client(std::move(gate_client))
 {
     Log::info(LogModule::Grpc, "StatusServiceImpl constructed, cleaning up expired nodes");
     _registry->cleanupExpiredNodes();
@@ -225,5 +228,45 @@ Status StatusServiceImpl::ValidateToken(ServerContext *context, const ValidateTo
     reply->set_error(ErrorCodes::SUCCESS);
     reply->set_uid(request->uid());
     Log::info(LogModule::Grpc, "ValidateToken: success uid={}", request->uid());
+    return Status::OK;
+}
+
+Status StatusServiceImpl::GetFileServer(ServerContext *context,
+                                        const GetFileServerReq *request,
+                                        GetFileServerRsp *reply)
+{
+    (void)context;
+    Log::info(LogModule::Grpc, "GetFileServer: uid={}", request->uid());
+
+    auto server = _registry->getNode("FileServer");
+    if (!server)
+    {
+        Log::warn(LogModule::Grpc, "GetFileServer: no available file server for uid={}",
+                  request->uid());
+        reply->set_error(ErrorCodes::RPCFAILED);
+        return Status::OK;
+    }
+
+    reply->set_host(server->client_host);
+    reply->set_port(server->client_port);
+    reply->set_error(ErrorCodes::SUCCESS);
+
+    std::string token = utils::generateUniqueString();
+    reply->set_token(token);
+    _file_token_repo->saveFileToken(request->uid(), token, 60);
+
+    Log::info(LogModule::Grpc, "GetFileServer: assigned uid={} to {}:{} with file token",
+              request->uid(), server->client_host, server->client_port);
+    return Status::OK;
+}
+
+Status StatusServiceImpl::DeleteFileToken(ServerContext *context,
+                                          const DeleteFileTokenReq *request,
+                                          DeleteFileTokenRsp *reply)
+{
+    (void)context;
+    Log::info(LogModule::Grpc, "DeleteFileToken: uid={}", request->uid());
+    _file_token_repo->deleteFileToken(request->uid());
+    reply->set_error(ErrorCodes::SUCCESS);
     return Status::OK;
 }

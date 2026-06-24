@@ -62,6 +62,20 @@ bool RedisMgr::set(const std::string &key, const std::string &value)
     }
 }
 
+bool RedisMgr::setEx(const std::string &key, const std::string &value, int ttl_sec)
+{
+    try
+    {
+        _redis->set(key, value, std::chrono::seconds(ttl_sec));
+        return true;
+    }
+    catch (const sw::redis::Error &e)
+    {
+        Log::error(LogModule::Redis, "SETEX {} {}s failed: {}", key, ttl_sec, e.what());
+        return false;
+    }
+}
+
 bool RedisMgr::del(const std::string &key)
 {
     try

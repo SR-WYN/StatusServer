@@ -27,6 +27,25 @@ message GetChatServerRsp {
   string token = 4;
 }
 
+message GetFileServerReq {
+  int32 uid = 1;
+}
+
+message GetFileServerRsp {
+  int32 error = 1;
+  string host = 2;
+  string port = 3;
+  string token = 4;
+}
+
+message DeleteFileTokenReq {
+  int32 uid = 1;
+}
+
+message DeleteFileTokenRsp {
+  int32 error = 1;
+}
+
 message RegisterNodeReq {
   string name = 1;
   string client_host = 2;
@@ -121,6 +140,8 @@ service StatusService {
   rpc BindUserToNode(BindUserToNodeReq) returns (BindUserToNodeRsp);
   rpc UnbindUser(UnbindUserReq) returns (UnbindUserRsp);
   rpc ValidateToken(ValidateTokenReq) returns (ValidateTokenRsp);
+  rpc GetFileServer(GetFileServerReq) returns (GetFileServerRsp);
+  rpc DeleteFileToken(DeleteFileTokenReq) returns (DeleteFileTokenRsp);
 }
 
 message AddFriendReq {

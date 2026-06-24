@@ -77,23 +77,28 @@ bool RedisNodeRegistryImpl::saveToken(int uid, const std::string &token)
     return true;
 }
 
-// 验证用户 token
+// 验证用户 token（同时支持登录 token 和文件传输临时 token）
 int RedisNodeRegistryImpl::validateToken(int uid, const std::string &token)
 {
     std::string uidStr = std::to_string(uid);
-    std::string tokenKey = RedisPrefix::USERTOKENPREFIX + uidStr;
+
+    // 先检查普通登录 token
+    std::string userTokenKey = std::string(RedisPrefix::USERTOKENPREFIX) + uidStr;
     std::string storedToken;
-    if (!RedisMgr::getInstance().get(tokenKey, storedToken))
+    if (RedisMgr::getInstance().get(userTokenKey, storedToken) && storedToken == token)
     {
-        Log::warn(LogModule::Registry, "validateToken: no token found for uid={}", uid);
-        return ErrorCodes::UID_INVALID;
+        return ErrorCodes::SUCCESS;
     }
-    if (storedToken != token)
+
+    // 再检查文件传输临时 token
+    std::string fileTokenKey = std::string(RedisPrefix::FILETOKENPREFIX) + uidStr;
+    if (RedisMgr::getInstance().get(fileTokenKey, storedToken) && storedToken == token)
     {
-        Log::warn(LogModule::Registry, "validateToken: token mismatch for uid={}", uid);
-        return ErrorCodes::TOKEN_INVALID;
+        return ErrorCodes::SUCCESS;
     }
-    return ErrorCodes::SUCCESS;
+
+    Log::warn(LogModule::Registry, "validateToken: token mismatch for uid={}", uid);
+    return ErrorCodes::TOKEN_INVALID;
 }
 
 // 清理 Redis 中所有已过期的节点记录及其登录计数

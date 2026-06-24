@@ -18,6 +18,7 @@ public:
     // 基础 KV 操作
     bool get(const std::string &key, std::string &value);
     bool set(const std::string &key, const std::string &value);
+    bool setEx(const std::string &key, const std::string &value, int ttl_sec);
     bool del(const std::string &key);
     bool existsKey(const std::string &key);
 

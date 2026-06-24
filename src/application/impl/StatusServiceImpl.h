@@ -2,6 +2,7 @@
 // 通过 NodeRegistry 接口管理节点注册、用户绑定等业务逻辑
 #pragma once
 
+#include "FileTokenRepository.h"
 #include "GateNotifyClient.h"
 #include "NodeRegistry.h"
 #include "grpcpp/grpcpp.h"
@@ -15,8 +16,12 @@ using grpc::Status;
 
 using message::BindUserToNodeReq;
 using message::BindUserToNodeRsp;
+using message::DeleteFileTokenReq;
+using message::DeleteFileTokenRsp;
 using message::GetChatServerReq;
 using message::GetChatServerRsp;
+using message::GetFileServerReq;
+using message::GetFileServerRsp;
 using message::GetUserNodeReq;
 using message::GetUserNodeRsp;
 using message::HeartbeatNodeReq;
@@ -36,10 +41,12 @@ using message::ValidateTokenRsp;
 class StatusServiceImpl final : public StatusService::Service
 {
 public:
-    /// 构造函数，接收节点注册中心接口实例和 GateServer 通知客户端
+    /// 构造函数，接收节点注册中心接口实例、文件 token 仓库和 GateServer 通知客户端
     /// @param registry 节点注册中心
+    /// @param file_token_repo 文件传输临时 token 仓库
     /// @param gate_client GateServer 通知客户端（可为 nullptr）
     StatusServiceImpl(std::shared_ptr<NodeRegistry> registry,
+                      std::shared_ptr<FileTokenRepository> file_token_repo,
                       std::shared_ptr<GateNotifyClient> gate_client);
 
     // GateServer 调用：获取一个负载最轻的 ChatServer 地址
@@ -74,12 +81,23 @@ public:
     Status ValidateToken(ServerContext *context, const ValidateTokenReq *request,
                          ValidateTokenRsp *reply) override;
 
+    // ChatServer 调用：获取一个可用的 FileServer 地址及临时 token
+    Status GetFileServer(ServerContext *context, const GetFileServerReq *request,
+                         GetFileServerRsp *reply) override;
+
+    // ChatServer 调用：删除指定用户的文件传输临时 token
+    Status DeleteFileToken(ServerContext *context, const DeleteFileTokenReq *request,
+                           DeleteFileTokenRsp *reply) override;
+
 private:
     // 将 token 存入 Redis，供后续登录验证
     void insertToken(int uid, const std::string &token);
 
     // 节点注册中心接口（通过依赖注入传入）
     std::shared_ptr<NodeRegistry> _registry;
+
+    // 文件传输临时 token 仓库
+    std::shared_ptr<FileTokenRepository> _file_token_repo;
 
     // GateServer 通知客户端
     std::shared_ptr<GateNotifyClient> _gate_client;
