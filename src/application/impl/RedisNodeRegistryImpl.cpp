@@ -6,6 +6,7 @@
 #include "const.h"
 #include "utils.h"
 
+#include <chrono>
 #include <climits>
 #include <json/reader.h>
 #include <json/writer.h>
@@ -43,7 +44,13 @@ bool RedisNodeRegistryImpl::parseNode(const std::string &json, NodeInfo &out)
     Json::Value root;
     if (!reader.parse(json, root) || !root.isObject())
     {
-        Log::warn(LogModule::Registry, "parseNode: failed to parse node JSON: {}", json);
+        std::string preview = json.substr(0, std::min<size_t>(200, json.size()));
+        if (json.size() > 200)
+        {
+            preview += "...";
+        }
+        Log::warn(LogModule::Registry, "parseNode: failed to parse node JSON ({} bytes): {}",
+                  json.size(), preview);
         return false;
     }
     out.client_host = root.get(kClientHost, "").asString();
@@ -70,7 +77,7 @@ bool RedisNodeRegistryImpl::saveToken(int uid, const std::string &token)
     bool ok = RedisMgr::getInstance().set(tokenKey, token);
     if (!ok)
     {
-        Log::warn(LogModule::Registry, "saveToken: failed for uid={}", uid);
+        Log::warn(LogModule::Registry, "saveToken: failed for uid={} key={}", uid, tokenKey);
         return false;
     }
     Log::debug(LogModule::Registry, "saveToken: uid={} token={}", uid, token);
@@ -87,6 +94,7 @@ int RedisNodeRegistryImpl::validateToken(int uid, const std::string &token)
     std::string storedToken;
     if (RedisMgr::getInstance().get(userTokenKey, storedToken) && storedToken == token)
     {
+        Log::debug(LogModule::Registry, "validateToken: user token matched uid={}", uid);
         return ErrorCodes::SUCCESS;
     }
 
@@ -94,16 +102,29 @@ int RedisNodeRegistryImpl::validateToken(int uid, const std::string &token)
     std::string fileTokenKey = std::string(RedisPrefix::FILETOKENPREFIX) + uidStr;
     if (RedisMgr::getInstance().get(fileTokenKey, storedToken) && storedToken == token)
     {
+        Log::debug(LogModule::Registry, "validateToken: file token matched uid={}", uid);
         return ErrorCodes::SUCCESS;
     }
 
-    Log::warn(LogModule::Registry, "validateToken: token mismatch for uid={}", uid);
+    if (storedToken.empty())
+    {
+        Log::warn(LogModule::Registry, "validateToken: no token found for uid={}", uid);
+    }
+    else
+    {
+        Log::warn(LogModule::Registry,
+                  "validateToken: token mismatch for uid={} expected={} actual={}", uid,
+                  storedToken, token);
+    }
     return ErrorCodes::TOKEN_INVALID;
 }
 
 // 清理 Redis 中所有已过期的节点记录及其登录计数
 void RedisNodeRegistryImpl::cleanupExpiredNodes()
 {
+    const auto start = std::chrono::steady_clock::now();
+    Log::debug(LogModule::Registry, "cleanupExpiredNodes: scanning started");
+
     std::map<std::string, std::string> all;
     if (!RedisMgr::getInstance().hGetAll(RedisPrefix::REGISTERED_NODES, all))
     {
@@ -112,28 +133,48 @@ void RedisNodeRegistryImpl::cleanupExpiredNodes()
     }
 
     int cleaned = 0;
+    int alive = 0;
     for (const auto &entry : all)
     {
         NodeInfo node;
         node.name = entry.first;
-        if (!parseNode(entry.second, node) || !isAlive(node))
+        if (!parseNode(entry.second, node))
+        {
+            Log::warn(LogModule::Registry,
+                      "cleanupExpiredNodes: invalid node JSON for '{}', removing", entry.first);
+            RedisMgr::getInstance().hDel(RedisPrefix::REGISTERED_NODES, entry.first);
+            RedisMgr::getInstance().hDel(RedisPrefix::LOGIN_COUNT, entry.first);
+            ++cleaned;
+            continue;
+        }
+
+        if (!isAlive(node))
         {
             RedisMgr::getInstance().hDel(RedisPrefix::REGISTERED_NODES, entry.first);
             RedisMgr::getInstance().hDel(RedisPrefix::LOGIN_COUNT, entry.first);
             ++cleaned;
-            Log::info(LogModule::Registry, "cleanupExpiredNodes: removed expired node {}",
-                      entry.first);
+            Log::info(LogModule::Registry,
+                      "cleanupExpiredNodes: removed expired node {} (expired at {})",
+                      entry.first, node.expire_at);
+        }
+        else
+        {
+            ++alive;
         }
     }
-    if (cleaned > 0)
-    {
-        Log::info(LogModule::Registry, "cleanupExpiredNodes: removed {} expired node(s)", cleaned);
-    }
+
+    const auto cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                             std::chrono::steady_clock::now() - start)
+                             .count();
+    Log::info(LogModule::Registry,
+              "cleanupExpiredNodes: scanned={} alive={} cleaned={} cost={}ms",
+              static_cast<int>(all.size()), alive, cleaned, cost_ms);
 }
 
 // 注册节点：先清理过期节点，若同名节点已存活且 instance_id 不同则拒绝
 bool RedisNodeRegistryImpl::registerNode(const NodeInfo &node)
 {
+    const auto start = std::chrono::steady_clock::now();
     if (node.name.empty())
     {
         Log::warn(LogModule::Registry, "registerNode: node name is empty");
@@ -162,14 +203,19 @@ bool RedisNodeRegistryImpl::registerNode(const NodeInfo &node)
     }
 
     redis.hSet(RedisPrefix::LOGIN_COUNT, node.name, "0");
-    Log::info(LogModule::Registry, "registerNode: registered node {} instance {}", node.name,
-              node.instance_id);
+
+    const auto cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                             std::chrono::steady_clock::now() - start)
+                             .count();
+    Log::info(LogModule::Registry, "registerNode: registered node {} instance {} cost={}ms",
+              node.name, node.instance_id, cost_ms);
     return true;
 }
 
 // 注销节点：清理节点绑定的所有用户路由，再删除节点记录
 bool RedisNodeRegistryImpl::unregisterNode(const std::string &name, const std::string &instance_id)
 {
+    const auto start = std::chrono::steady_clock::now();
     auto existing = getNode(name);
     if (!existing)
     {
@@ -202,13 +248,18 @@ bool RedisNodeRegistryImpl::unregisterNode(const std::string &name, const std::s
     redis.hDel(RedisPrefix::REGISTERED_NODES, name);
     redis.hDel(RedisPrefix::LOGIN_COUNT, name);
 
-    Log::info(LogModule::Registry, "unregisterNode: unregistered node {}", name);
+    const auto cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                             std::chrono::steady_clock::now() - start)
+                             .count();
+    Log::info(LogModule::Registry, "unregisterNode: unregistered node {} cost={}ms", name,
+              cost_ms);
     return true;
 }
 
 // 心跳续期：刷新节点的 expire_at 为当前时间 + TTL
 bool RedisNodeRegistryImpl::heartbeat(const std::string &name, const std::string &instance_id)
 {
+    const auto start = std::chrono::steady_clock::now();
     auto existing = getNode(name);
     if (!existing || existing->instance_id != instance_id)
     {
@@ -222,10 +273,13 @@ bool RedisNodeRegistryImpl::heartbeat(const std::string &name, const std::string
     updated.expire_at = utils::nowSec() + NODE_TTL_SEC;
 
     bool ok = RedisMgr::getInstance().hSet(RedisPrefix::REGISTERED_NODES, name, serializeNode(updated));
+    const auto cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                             std::chrono::steady_clock::now() - start)
+                             .count();
     if (ok)
     {
-        Log::debug(LogModule::Registry, "heartbeat: renewed node {} instance {}", name,
-                   instance_id);
+        Log::debug(LogModule::Registry, "heartbeat: renewed node {} instance {} cost={}ms", name,
+                   instance_id, cost_ms);
     }
     else
     {
@@ -393,6 +447,7 @@ bool RedisNodeRegistryImpl::unbindUser(int uid)
 // 选取当前登录用户数最少的节点（简单负载均衡）
 std::optional<NodeInfo> RedisNodeRegistryImpl::selectLeastLoadedNode()
 {
+    const auto start = std::chrono::steady_clock::now();
     auto nodes = listNodes();
     if (nodes.empty())
     {
@@ -402,6 +457,7 @@ std::optional<NodeInfo> RedisNodeRegistryImpl::selectLeastLoadedNode()
 
     NodeInfo best;
     int bestCount = INT_MAX;
+    std::string load_details;
 
     for (const auto &node : nodes)
     {
@@ -414,6 +470,12 @@ std::optional<NodeInfo> RedisNodeRegistryImpl::selectLeastLoadedNode()
 
         auto countStr = RedisMgr::getInstance().hGet(RedisPrefix::LOGIN_COUNT, node.name);
         int count = countStr.empty() ? INT_MAX : std::stoi(countStr);
+        if (!load_details.empty())
+        {
+            load_details += ", ";
+        }
+        load_details += node.name + "=" + std::to_string(count);
+
         if (count < bestCount)
         {
             bestCount = count;
@@ -421,13 +483,18 @@ std::optional<NodeInfo> RedisNodeRegistryImpl::selectLeastLoadedNode()
         }
     }
 
+    const auto cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                             std::chrono::steady_clock::now() - start)
+                             .count();
+
     if (best.name.empty())
     {
         Log::warn(LogModule::Registry, "selectLeastLoadedNode: no ChatServer node available");
         return std::nullopt;
     }
 
-    Log::info(LogModule::Registry, "selectLeastLoadedNode: selected node {} with {} login(s)",
-              best.name, bestCount);
+    Log::info(LogModule::Registry,
+              "selectLeastLoadedNode: selected node {} with {} login(s) candidates=[{}] cost={}ms",
+              best.name, bestCount, load_details, cost_ms);
     return best;
 }

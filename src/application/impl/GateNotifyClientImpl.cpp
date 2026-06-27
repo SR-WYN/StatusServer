@@ -4,6 +4,7 @@
 #include "LogModule.h"
 #include "const.h"
 
+#include <chrono>
 #include <grpcpp/grpcpp.h>
 
 GateNotifyClientImpl::GateNotifyClientImpl(const std::string &address)
@@ -15,6 +16,7 @@ GateNotifyClientImpl::GateNotifyClientImpl(const std::string &address)
 
 bool GateNotifyClientImpl::notifyUserOffline(int uid)
 {
+    const auto start = std::chrono::steady_clock::now();
     message::UserOfflineReq request;
     request.set_uid(uid);
 
@@ -22,20 +24,24 @@ bool GateNotifyClientImpl::notifyUserOffline(int uid)
     grpc::ClientContext context;
 
     grpc::Status status = _stub->NotifyUserOffline(&context, request, &response);
+    const auto cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                             std::chrono::steady_clock::now() - start)
+                             .count();
+
     if (!status.ok())
     {
-        Log::error(LogModule::Grpc, "NotifyUserOffline failed: uid={}, error={}", uid,
-                   status.error_message());
+        Log::error(LogModule::Grpc, "NotifyUserOffline RPC failed: uid={}, error={} cost={}ms",
+                   uid, status.error_message(), cost_ms);
         return false;
     }
 
     if (response.error() != ErrorCodes::SUCCESS)
     {
-        Log::warn(LogModule::Grpc, "NotifyUserOffline returned error: uid={}, error_code={}", uid,
-                  response.error());
+        Log::warn(LogModule::Grpc, "NotifyUserOffline returned error: uid={}, error_code={} cost={}ms",
+                  uid, response.error(), cost_ms);
         return false;
     }
 
-    Log::info(LogModule::Grpc, "NotifyUserOffline success: uid={}", uid);
+    Log::info(LogModule::Grpc, "NotifyUserOffline success: uid={} cost={}ms", uid, cost_ms);
     return true;
 }

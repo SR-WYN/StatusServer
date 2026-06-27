@@ -7,6 +7,8 @@
 #include "const.h"
 #include "utils.h"
 
+#include <chrono>
+
 StatusServiceImpl::StatusServiceImpl(std::shared_ptr<NodeRegistry> registry,
                                      std::shared_ptr<FileTokenRepository> file_token_repo,
                                      std::shared_ptr<GateNotifyClient> gate_client)
@@ -22,7 +24,15 @@ Status StatusServiceImpl::GetChatServer(ServerContext *context, const GetChatSer
                                         GetChatServerRsp *reply)
 {
     (void)context;
+    const auto start = std::chrono::steady_clock::now();
     Log::info(LogModule::Grpc, "GetChatServer: uid={}", request->uid());
+
+    if (request->uid() <= 0)
+    {
+        Log::warn(LogModule::Grpc, "GetChatServer: invalid uid={}", request->uid());
+        reply->set_error(ErrorCodes::UID_INVALID);
+        return Status::OK;
+    }
 
     auto server = _registry->selectLeastLoadedNode();
     if (!server)
@@ -39,15 +49,21 @@ Status StatusServiceImpl::GetChatServer(ServerContext *context, const GetChatSer
 
     if (!_registry->saveToken(request->uid(), reply->token()))
     {
-        Log::warn(LogModule::Grpc, "GetChatServer: failed to save token for uid={}",
-                  request->uid());
+        Log::error(LogModule::Grpc, "GetChatServer: failed to save token for uid={}",
+                   request->uid());
         reply->set_error(ErrorCodes::RPCFAILED);
         return Status::OK;
     }
 
     reply->set_error(ErrorCodes::SUCCESS);
-    Log::info(LogModule::Grpc, "GetChatServer: assigned uid={} to {}:{} with token", request->uid(),
-              server->client_host, server->client_port);
+
+    const auto cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                             std::chrono::steady_clock::now() - start)
+                             .count();
+    Log::info(LogModule::Grpc,
+              "GetChatServer: assigned uid={} to {}:{} token={} cost={}ms",
+              request->uid(), server->client_host, server->client_port,
+              reply->token(), cost_ms);
     return Status::OK;
 }
 
@@ -66,6 +82,7 @@ Status StatusServiceImpl::RegisterNode(ServerContext *context,
                                            RegisterNodeRsp *reply)
 {
     (void)context;
+    const auto start = std::chrono::steady_clock::now();
     Log::info(LogModule::Grpc, "RegisterNode: name={} instance={} client={}:{} rpc={}:{}",
               request->name(), request->instance_id(), request->client_host(),
               request->client_port(), request->rpc_host(), request->rpc_port());
@@ -80,16 +97,20 @@ Status StatusServiceImpl::RegisterNode(ServerContext *context,
 
     if (!_registry->registerNode(node))
     {
-        Log::error(LogModule::Grpc, "RegisterNode: failed to register node {}",
-                   request->name());
+        Log::warn(LogModule::Grpc, "RegisterNode: rejected or failed for node {}",
+                  request->name());
         reply->set_error(ErrorCodes::RPCFAILED);
         return Status::OK;
     }
 
     reply->set_error(ErrorCodes::SUCCESS);
     reply->set_name(node.name);
-    Log::info(LogModule::Grpc, "RegisterNode: node {} registered successfully",
-              request->name());
+
+    const auto cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                             std::chrono::steady_clock::now() - start)
+                             .count();
+    Log::info(LogModule::Grpc, "RegisterNode: node {} instance {} registered cost={}ms",
+              request->name(), request->instance_id(), cost_ms);
     return Status::OK;
 }
 
@@ -98,20 +119,25 @@ Status StatusServiceImpl::UnregisterNode(ServerContext *context,
                                              UnregisterNodeRsp *reply)
 {
     (void)context;
+    const auto start = std::chrono::steady_clock::now();
     Log::info(LogModule::Grpc, "UnregisterNode: name={} instance={}", request->name(),
               request->instance_id());
 
     if (!_registry->unregisterNode(request->name(), request->instance_id()))
     {
-        Log::error(LogModule::Grpc, "UnregisterNode: failed to unregister node {}",
-                   request->name());
+        Log::warn(LogModule::Grpc, "UnregisterNode: failed for node {} instance {}",
+                  request->name(), request->instance_id());
         reply->set_error(ErrorCodes::RPCFAILED);
         return Status::OK;
     }
 
     reply->set_error(ErrorCodes::SUCCESS);
-    Log::info(LogModule::Grpc, "UnregisterNode: node {} unregistered successfully",
-              request->name());
+
+    const auto cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                             std::chrono::steady_clock::now() - start)
+                             .count();
+    Log::info(LogModule::Grpc, "UnregisterNode: node {} instance {} unregistered cost={}ms",
+              request->name(), request->instance_id(), cost_ms);
     return Status::OK;
 }
 
@@ -139,12 +165,20 @@ Status StatusServiceImpl::GetUserNode(ServerContext *context, const GetUserNodeR
                                           GetUserNodeRsp *reply)
 {
     (void)context;
+    const auto start = std::chrono::steady_clock::now();
     Log::info(LogModule::Grpc, "GetUserNode: uid={}", request->uid());
+
+    if (request->uid() <= 0)
+    {
+        Log::warn(LogModule::Grpc, "GetUserNode: invalid uid={}", request->uid());
+        reply->set_error(ErrorCodes::UID_INVALID);
+        return Status::OK;
+    }
 
     auto node = _registry->getNodeForUser(request->uid());
     if (!node)
     {
-        Log::warn(LogModule::Grpc, "GetUserNode: no node found for uid={}", request->uid());
+        Log::debug(LogModule::Grpc, "GetUserNode: no node found for uid={}", request->uid());
         reply->set_error(ErrorCodes::UID_INVALID);
         return Status::OK;
     }
@@ -156,8 +190,11 @@ Status StatusServiceImpl::GetUserNode(ServerContext *context, const GetUserNodeR
     reply->set_client_host(node->client_host);
     reply->set_client_port(node->client_port);
 
-    Log::info(LogModule::Grpc, "GetUserNode: uid={} -> node {} ({}:{})", request->uid(),
-              node->name, node->client_host, node->client_port);
+    const auto cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                             std::chrono::steady_clock::now() - start)
+                             .count();
+    Log::info(LogModule::Grpc, "GetUserNode: uid={} -> node {} ({}:{}) cost={}ms",
+              request->uid(), node->name, node->client_host, node->client_port, cost_ms);
     return Status::OK;
 }
 
@@ -165,20 +202,32 @@ Status StatusServiceImpl::BindUserToNode(ServerContext *context, const BindUserT
                                          BindUserToNodeRsp *reply)
 {
     (void)context;
+    const auto start = std::chrono::steady_clock::now();
     Log::info(LogModule::Grpc, "BindUserToNode: uid={} node={}", request->uid(),
               request->node_name());
 
+    if (request->uid() <= 0)
+    {
+        Log::warn(LogModule::Grpc, "BindUserToNode: invalid uid={}", request->uid());
+        reply->set_error(ErrorCodes::UID_INVALID);
+        return Status::OK;
+    }
+
     if (!_registry->bindUser(request->uid(), request->node_name()))
     {
-        Log::error(LogModule::Grpc, "BindUserToNode: failed to bind uid={} to node {}",
+        Log::warn(LogModule::Grpc, "BindUserToNode: failed to bind uid={} to node {}",
                    request->uid(), request->node_name());
         reply->set_error(ErrorCodes::RPCFAILED);
         return Status::OK;
     }
 
     reply->set_error(ErrorCodes::SUCCESS);
-    Log::info(LogModule::Grpc, "BindUserToNode: uid={} bound to node {} successfully",
-              request->uid(), request->node_name());
+
+    const auto cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                             std::chrono::steady_clock::now() - start)
+                             .count();
+    Log::info(LogModule::Grpc, "BindUserToNode: uid={} bound to node {} cost={}ms",
+              request->uid(), request->node_name(), cost_ms);
     return Status::OK;
 }
 
@@ -186,12 +235,20 @@ Status StatusServiceImpl::UnbindUser(ServerContext *context, const UnbindUserReq
                                      UnbindUserRsp *reply)
 {
     (void)context;
+    const auto start = std::chrono::steady_clock::now();
     int uid = request->uid();
     Log::info(LogModule::Grpc, "UnbindUser: uid={}", uid);
 
+    if (uid <= 0)
+    {
+        Log::warn(LogModule::Grpc, "UnbindUser: invalid uid={}", uid);
+        reply->set_error(ErrorCodes::UID_INVALID);
+        return Status::OK;
+    }
+
     if (!_registry->unbindUser(uid))
     {
-        Log::error(LogModule::Grpc, "UnbindUser: failed to unbind uid={}", uid);
+        Log::warn(LogModule::Grpc, "UnbindUser: failed to unbind uid={}", uid);
         reply->set_error(ErrorCodes::RPCFAILED);
         return Status::OK;
     }
@@ -213,9 +270,17 @@ Status StatusServiceImpl::UnbindUser(ServerContext *context, const UnbindUserReq
             }
         });
     }
+    else
+    {
+        Log::debug(LogModule::Grpc, "UnbindUser: no gate client configured, skip notification");
+    }
 
     reply->set_error(ErrorCodes::SUCCESS);
-    Log::info(LogModule::Grpc, "UnbindUser: uid={} unbound successfully", uid);
+
+    const auto cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                             std::chrono::steady_clock::now() - start)
+                             .count();
+    Log::info(LogModule::Grpc, "UnbindUser: uid={} unbound cost={}ms", uid, cost_ms);
     return Status::OK;
 }
 
@@ -223,18 +288,33 @@ Status StatusServiceImpl::ValidateToken(ServerContext *context, const ValidateTo
                                         ValidateTokenRsp *reply)
 {
     (void)context;
-    Log::info(LogModule::Grpc, "ValidateToken: uid={}", request->uid());
+    const auto start = std::chrono::steady_clock::now();
+    Log::debug(LogModule::Grpc, "ValidateToken: uid={} token={}", request->uid(),
+               request->token());
+
+    if (request->uid() <= 0)
+    {
+        Log::warn(LogModule::Grpc, "ValidateToken: invalid uid={}", request->uid());
+        reply->set_error(ErrorCodes::UID_INVALID);
+        return Status::OK;
+    }
 
     int err = _registry->validateToken(request->uid(), request->token());
     if (err != ErrorCodes::SUCCESS)
     {
+        Log::warn(LogModule::Grpc, "ValidateToken: failed uid={} err={}", request->uid(), err);
         reply->set_error(err);
         return Status::OK;
     }
 
     reply->set_error(ErrorCodes::SUCCESS);
     reply->set_uid(request->uid());
-    Log::info(LogModule::Grpc, "ValidateToken: success uid={}", request->uid());
+
+    const auto cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                             std::chrono::steady_clock::now() - start)
+                             .count();
+    Log::debug(LogModule::Grpc, "ValidateToken: success uid={} cost={}ms", request->uid(),
+               cost_ms);
     return Status::OK;
 }
 
@@ -243,7 +323,15 @@ Status StatusServiceImpl::GetFileServer(ServerContext *context,
                                         GetFileServerRsp *reply)
 {
     (void)context;
+    const auto start = std::chrono::steady_clock::now();
     Log::info(LogModule::Grpc, "GetFileServer: uid={}", request->uid());
+
+    if (request->uid() <= 0)
+    {
+        Log::warn(LogModule::Grpc, "GetFileServer: invalid uid={}", request->uid());
+        reply->set_error(ErrorCodes::UID_INVALID);
+        return Status::OK;
+    }
 
     auto server = _registry->getNode("FileServer");
     if (!server)
@@ -256,14 +344,27 @@ Status StatusServiceImpl::GetFileServer(ServerContext *context,
 
     reply->set_host(server->client_host);
     reply->set_port(server->client_port);
-    reply->set_error(ErrorCodes::SUCCESS);
 
     std::string token = utils::generateUniqueString();
     reply->set_token(token);
-    _file_token_repo->saveFileToken(request->uid(), token, 60);
 
-    Log::info(LogModule::Grpc, "GetFileServer: assigned uid={} to {}:{} with file token",
-              request->uid(), server->client_host, server->client_port);
+    if (!_file_token_repo->saveFileToken(request->uid(), token, 60))
+    {
+        Log::error(LogModule::Grpc, "GetFileServer: failed to save file token for uid={}",
+                   request->uid());
+        reply->set_error(ErrorCodes::RPCFAILED);
+        return Status::OK;
+    }
+
+    reply->set_error(ErrorCodes::SUCCESS);
+
+    const auto cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                             std::chrono::steady_clock::now() - start)
+                             .count();
+    Log::info(LogModule::Grpc,
+              "GetFileServer: assigned uid={} to {}:{} token={} cost={}ms",
+              request->uid(), server->client_host, server->client_port,
+              token, cost_ms);
     return Status::OK;
 }
 
@@ -273,7 +374,23 @@ Status StatusServiceImpl::DeleteFileToken(ServerContext *context,
 {
     (void)context;
     Log::info(LogModule::Grpc, "DeleteFileToken: uid={}", request->uid());
-    _file_token_repo->deleteFileToken(request->uid());
+
+    if (request->uid() <= 0)
+    {
+        Log::warn(LogModule::Grpc, "DeleteFileToken: invalid uid={}", request->uid());
+        reply->set_error(ErrorCodes::UID_INVALID);
+        return Status::OK;
+    }
+
+    if (!_file_token_repo->deleteFileToken(request->uid()))
+    {
+        Log::warn(LogModule::Grpc, "DeleteFileToken: failed for uid={}", request->uid());
+    }
+    else
+    {
+        Log::info(LogModule::Grpc, "DeleteFileToken: uid={} token deleted", request->uid());
+    }
+
     reply->set_error(ErrorCodes::SUCCESS);
     return Status::OK;
 }
