@@ -35,10 +35,17 @@ Status StatusServiceImpl::GetChatServer(ServerContext *context, const GetChatSer
 
     reply->set_host(server->client_host);
     reply->set_port(server->client_port);
-    reply->set_error(ErrorCodes::SUCCESS);
     reply->set_token(utils::generateUniqueString());
-    insertToken(request->uid(), reply->token());
 
+    if (!_registry->saveToken(request->uid(), reply->token()))
+    {
+        Log::warn(LogModule::Grpc, "GetChatServer: failed to save token for uid={}",
+                  request->uid());
+        reply->set_error(ErrorCodes::RPCFAILED);
+        return Status::OK;
+    }
+
+    reply->set_error(ErrorCodes::SUCCESS);
     Log::info(LogModule::Grpc, "GetChatServer: assigned uid={} to {}:{} with token", request->uid(),
               server->client_host, server->client_port);
     return Status::OK;
