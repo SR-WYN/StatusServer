@@ -11,13 +11,38 @@
 
 StatusServiceImpl::StatusServiceImpl(std::shared_ptr<NodeRegistry> registry,
                                      std::shared_ptr<FileTokenRepository> file_token_repo,
-                                     std::shared_ptr<GateNotifyClient> gate_client)
+                                     std::shared_ptr<GateNotifyClient> gate_client,
+                                     std::shared_ptr<ChatNotifyClient> chat_client)
     : _registry(std::move(registry)),
       _file_token_repo(std::move(file_token_repo)),
-      _gate_client(std::move(gate_client))
+      _gate_client(std::move(gate_client)),
+      _chat_client(std::move(chat_client))
 {
     Log::info(LogModule::Grpc, "StatusServiceImpl constructed, cleaning up expired nodes");
     _registry->cleanupExpiredNodes();
+}
+
+// 异步通知 GateServer 清理用户 session
+void StatusServiceImpl::notifyGateUserOffline(int uid)
+{
+    if (!_gate_client)
+    {
+        Log::debug(LogModule::Grpc, "notifyGateUserOffline: no gate client configured");
+        return;
+    }
+
+    int uidCopy = uid;
+    auto gateClient = _gate_client;
+    ThreadPoolMgr::getInstance().enqueueGrpcClient([gateClient, uidCopy]() {
+        if (!gateClient->notifyUserOffline(uidCopy))
+        {
+            Log::warn(LogModule::Grpc, "notifyGateUserOffline: failed for uid={}", uidCopy);
+        }
+        else
+        {
+            Log::info(LogModule::Grpc, "notifyGateUserOffline: success for uid={}", uidCopy);
+        }
+    });
 }
 
 Status StatusServiceImpl::GetChatServer(ServerContext *context, const GetChatServerReq *request,
@@ -25,32 +50,56 @@ Status StatusServiceImpl::GetChatServer(ServerContext *context, const GetChatSer
 {
     (void)context;
     const auto start = std::chrono::steady_clock::now();
-    Log::info(LogModule::Grpc, "GetChatServer: uid={}", request->uid());
+    int uid = request->uid();
+    Log::info(LogModule::Grpc, "GetChatServer: uid={}", uid);
 
-    if (request->uid() <= 0)
+    if (uid <= 0)
     {
-        Log::warn(LogModule::Grpc, "GetChatServer: invalid uid={}", request->uid());
+        Log::warn(LogModule::Grpc, "GetChatServer: invalid uid={}", uid);
         reply->set_error(ErrorCodes::UID_INVALID);
         return Status::OK;
     }
 
+    // 1. 查询旧节点，先尝试通知旧节点踢掉用户（失败不阻塞登录）
+    auto old_node = _registry->getNodeForUser(uid);
+    if (old_node && _chat_client)
+    {
+        Log::info(LogModule::Grpc, "GetChatServer: kicking old session uid={} node={}",
+                  uid, old_node->name);
+        if (!_chat_client->notifyKickUser(old_node->rpc_host, old_node->rpc_port, uid,
+                                          "new login"))
+        {
+            Log::warn(LogModule::Grpc, "GetChatServer: kick old session failed uid={} node={}",
+                      uid, old_node->name);
+        }
+    }
+
+    // 2. 统一清理旧登录数据（解绑节点 + 删 token）
+    if (!_registry->clearUserLoginData(uid))
+    {
+        Log::warn(LogModule::Grpc, "GetChatServer: clearUserLoginData failed uid={}", uid);
+    }
+
+    // 3. 通知 GateServer 清理旧 session
+    notifyGateUserOffline(uid);
+
+    // 4. 负载均衡选择新节点
     auto server = _registry->selectLeastLoadedNode();
     if (!server)
     {
-        Log::warn(LogModule::Grpc, "GetChatServer: no available chat server for uid={}",
-                  request->uid());
+        Log::warn(LogModule::Grpc, "GetChatServer: no available chat server for uid={}", uid);
         reply->set_error(ErrorCodes::RPCFAILED);
         return Status::OK;
     }
 
+    // 5. 生成新 token 并保存（短 TTL）
     reply->set_host(server->client_host);
     reply->set_port(server->client_port);
     reply->set_token(utils::generateUniqueString());
 
-    if (!_registry->saveToken(request->uid(), reply->token()))
+    if (!_registry->saveToken(uid, reply->token()))
     {
-        Log::error(LogModule::Grpc, "GetChatServer: failed to save token for uid={}",
-                   request->uid());
+        Log::error(LogModule::Grpc, "GetChatServer: failed to save token for uid={}", uid);
         reply->set_error(ErrorCodes::RPCFAILED);
         return Status::OK;
     }
@@ -62,7 +111,7 @@ Status StatusServiceImpl::GetChatServer(ServerContext *context, const GetChatSer
                              .count();
     Log::info(LogModule::Grpc,
               "GetChatServer: assigned uid={} to {}:{} token={} cost={}ms",
-              request->uid(), server->client_host, server->client_port,
+              uid, server->client_host, server->client_port,
               reply->token(), cost_ms);
     return Status::OK;
 }
@@ -246,34 +295,15 @@ Status StatusServiceImpl::UnbindUser(ServerContext *context, const UnbindUserReq
         return Status::OK;
     }
 
-    if (!_registry->unbindUser(uid))
+    if (!_registry->clearUserLoginData(uid))
     {
-        Log::warn(LogModule::Grpc, "UnbindUser: failed to unbind uid={}", uid);
+        Log::warn(LogModule::Grpc, "UnbindUser: failed to clear login data uid={}", uid);
         reply->set_error(ErrorCodes::RPCFAILED);
         return Status::OK;
     }
 
     // 通过 gRPC 通知 GateServer 用户下线（投递到 gRPC 客户端池，不阻塞当前线程）
-    if (_gate_client)
-    {
-        int uidCopy = uid;
-        auto gateClient = _gate_client;
-        ThreadPoolMgr::getInstance().enqueueGrpcClient([gateClient, uidCopy]() {
-            if (!gateClient->notifyUserOffline(uidCopy))
-            {
-                Log::warn(LogModule::Grpc, "UnbindUser: failed to notify GateServer for uid={}",
-                          uidCopy);
-            }
-            else
-            {
-                Log::info(LogModule::Grpc, "UnbindUser: notified GateServer for uid={}", uidCopy);
-            }
-        });
-    }
-    else
-    {
-        Log::debug(LogModule::Grpc, "UnbindUser: no gate client configured, skip notification");
-    }
+    notifyGateUserOffline(uid);
 
     reply->set_error(ErrorCodes::SUCCESS);
 
@@ -281,6 +311,69 @@ Status StatusServiceImpl::UnbindUser(ServerContext *context, const UnbindUserReq
                              std::chrono::steady_clock::now() - start)
                              .count();
     Log::info(LogModule::Grpc, "UnbindUser: uid={} unbound cost={}ms", uid, cost_ms);
+    return Status::OK;
+}
+
+Status StatusServiceImpl::Logout(ServerContext *context, const LogoutReq *request,
+                                 LogoutRsp *reply)
+{
+    (void)context;
+    const auto start = std::chrono::steady_clock::now();
+    int uid = request->uid();
+    Log::info(LogModule::Grpc, "Logout: uid={}", uid);
+
+    if (uid <= 0)
+    {
+        Log::warn(LogModule::Grpc, "Logout: invalid uid={}", uid);
+        reply->set_error(ErrorCodes::UID_INVALID);
+        return Status::OK;
+    }
+
+    // 统一清理登录数据并通知 GateServer
+    if (!_registry->clearUserLoginData(uid))
+    {
+        Log::warn(LogModule::Grpc, "Logout: clearUserLoginData failed uid={}", uid);
+    }
+    notifyGateUserOffline(uid);
+
+    reply->set_error(ErrorCodes::SUCCESS);
+
+    const auto cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                             std::chrono::steady_clock::now() - start)
+                             .count();
+    Log::info(LogModule::Grpc, "Logout: uid={} cost={}ms", uid, cost_ms);
+    return Status::OK;
+}
+
+Status StatusServiceImpl::RefreshTokenTTL(ServerContext *context,
+                                          const RefreshTokenTTLReq *request,
+                                          RefreshTokenTTLRsp *reply)
+{
+    (void)context;
+    const auto start = std::chrono::steady_clock::now();
+    int uid = request->uid();
+    Log::debug(LogModule::Grpc, "RefreshTokenTTL: uid={}", uid);
+
+    if (uid <= 0)
+    {
+        Log::warn(LogModule::Grpc, "RefreshTokenTTL: invalid uid={}", uid);
+        reply->set_error(ErrorCodes::UID_INVALID);
+        return Status::OK;
+    }
+
+    if (!_registry->refreshTokenTTL(uid))
+    {
+        Log::warn(LogModule::Grpc, "RefreshTokenTTL: failed for uid={}", uid);
+        reply->set_error(ErrorCodes::RPCFAILED);
+        return Status::OK;
+    }
+
+    reply->set_error(ErrorCodes::SUCCESS);
+
+    const auto cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                             std::chrono::steady_clock::now() - start)
+                             .count();
+    Log::debug(LogModule::Grpc, "RefreshTokenTTL: uid={} cost={}ms", uid, cost_ms);
     return Status::OK;
 }
 

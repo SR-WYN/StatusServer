@@ -2,6 +2,7 @@
 // 通过 NodeRegistry 接口管理节点注册、用户绑定等业务逻辑
 #pragma once
 
+#include "ChatNotifyClient.h"
 #include "FileTokenRepository.h"
 #include "GateNotifyClient.h"
 #include "NodeRegistry.h"
@@ -26,6 +27,10 @@ using message::GetUserNodeReq;
 using message::GetUserNodeRsp;
 using message::HeartbeatNodeReq;
 using message::HeartbeatNodeRsp;
+using message::LogoutReq;
+using message::LogoutRsp;
+using message::RefreshTokenTTLReq;
+using message::RefreshTokenTTLRsp;
 using message::RegisterNodeReq;
 using message::RegisterNodeRsp;
 using message::StatusService;
@@ -41,13 +46,15 @@ using message::ValidateTokenRsp;
 class StatusServiceImpl final : public StatusService::Service
 {
 public:
-    /// 构造函数，接收节点注册中心接口实例、文件 token 仓库和 GateServer 通知客户端
+    /// 构造函数，接收节点注册中心接口实例、文件 token 仓库和通知客户端
     /// @param registry 节点注册中心
     /// @param file_token_repo 文件传输临时 token 仓库
     /// @param gate_client GateServer 通知客户端（可为 nullptr）
+    /// @param chat_client ChatServer 通知客户端（可为 nullptr）
     StatusServiceImpl(std::shared_ptr<NodeRegistry> registry,
                       std::shared_ptr<FileTokenRepository> file_token_repo,
-                      std::shared_ptr<GateNotifyClient> gate_client);
+                      std::shared_ptr<GateNotifyClient> gate_client,
+                      std::shared_ptr<ChatNotifyClient> chat_client = nullptr);
 
     // GateServer 调用：获取一个负载最轻的 ChatServer 地址
     Status GetChatServer(ServerContext *context, const GetChatServerReq *request,
@@ -77,6 +84,14 @@ public:
     Status UnbindUser(ServerContext *context, const UnbindUserReq *request,
                       UnbindUserRsp *reply) override;
 
+    // GateServer 调用：用户主动下线
+    Status Logout(ServerContext *context, const LogoutReq *request,
+                  LogoutRsp *reply) override;
+
+    // ChatServer 调用：刷新登录 token TTL
+    Status RefreshTokenTTL(ServerContext *context, const RefreshTokenTTLReq *request,
+                           RefreshTokenTTLRsp *reply) override;
+
     // FileServer 调用：验证 Token 有效性
     Status ValidateToken(ServerContext *context, const ValidateTokenReq *request,
                          ValidateTokenRsp *reply) override;
@@ -93,6 +108,9 @@ private:
     // 将 token 存入 Redis，供后续登录验证
     void insertToken(int uid, const std::string &token);
 
+    // 异步通知 GateServer 清理用户 session
+    void notifyGateUserOffline(int uid);
+
     // 节点注册中心接口（通过依赖注入传入）
     std::shared_ptr<NodeRegistry> _registry;
 
@@ -101,4 +119,7 @@ private:
 
     // GateServer 通知客户端
     std::shared_ptr<GateNotifyClient> _gate_client;
+
+    // ChatServer 通知客户端
+    std::shared_ptr<ChatNotifyClient> _chat_client;
 };

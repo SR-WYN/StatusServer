@@ -1,11 +1,13 @@
 add_library(ss_application STATIC
     interface/NodeRegistry.h
     interface/GateNotifyClient.h
+    interface/ChatNotifyClient.h
     interface/FileTokenRepository.h
     impl/StatusServiceImpl.cpp
     impl/RedisNodeRegistryImpl.cpp
     impl/RedisFileTokenRepositoryImpl.cpp
     impl/GateNotifyClientImpl.cpp
+    impl/ChatNotifyClientImpl.cpp
 )
 
 add_dependencies(ss_application ss_proto_gen)

@@ -27,6 +27,9 @@ public:
     std::vector<NodeInfo> listNodes() override;
     bool bindUser(int uid, const std::string &node_name) override;
     bool unbindUser(int uid) override;
+    bool refreshTokenTTL(int uid) override;
+    bool deleteToken(int uid) override;
+    bool clearUserLoginData(int uid) override;
     std::optional<NodeInfo> selectLeastLoadedNode() override;
     void cleanupExpiredNodes() override;
     bool saveToken(int uid, const std::string &token) override;

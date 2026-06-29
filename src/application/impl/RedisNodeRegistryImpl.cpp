@@ -69,18 +69,19 @@ bool RedisNodeRegistryImpl::isAlive(const NodeInfo &node)
     return node.expire_at >= utils::nowSec();
 }
 
-// 保存用户 token 到 Redis
+// 保存用户 token 到 Redis，设置短 TTL
 bool RedisNodeRegistryImpl::saveToken(int uid, const std::string &token)
 {
     std::string uidStr = std::to_string(uid);
     std::string tokenKey = RedisPrefix::USERTOKENPREFIX + uidStr;
-    bool ok = RedisMgr::getInstance().set(tokenKey, token);
+    bool ok = RedisMgr::getInstance().setEx(tokenKey, token, TOKEN_TTL_SECONDS);
     if (!ok)
     {
         Log::warn(LogModule::Registry, "saveToken: failed for uid={} key={}", uid, tokenKey);
         return false;
     }
-    Log::debug(LogModule::Registry, "saveToken: uid={} token={}", uid, token);
+    Log::debug(LogModule::Registry, "saveToken: uid={} token={} ttl={}s", uid, token,
+               TOKEN_TTL_SECONDS);
     return true;
 }
 
@@ -442,6 +443,73 @@ bool RedisNodeRegistryImpl::unbindUser(int uid)
 
     Log::info(LogModule::Registry, "unbindUser: user {} unbound", uid);
     return true;
+}
+
+// 刷新登录 token TTL
+bool RedisNodeRegistryImpl::refreshTokenTTL(int uid)
+{
+    if (uid <= 0)
+    {
+        Log::warn(LogModule::Registry, "refreshTokenTTL: invalid uid {}", uid);
+        return false;
+    }
+
+    std::string tokenKey = std::string(RedisPrefix::USERTOKENPREFIX) + std::to_string(uid);
+    if (!RedisMgr::getInstance().expire(tokenKey, TOKEN_TTL_SECONDS))
+    {
+        Log::warn(LogModule::Registry, "refreshTokenTTL: failed for uid={} key={}", uid,
+                  tokenKey);
+        return false;
+    }
+    Log::debug(LogModule::Registry, "refreshTokenTTL: uid={} ttl={}s", uid, TOKEN_TTL_SECONDS);
+    return true;
+}
+
+// 删除登录 token
+bool RedisNodeRegistryImpl::deleteToken(int uid)
+{
+    if (uid <= 0)
+    {
+        Log::warn(LogModule::Registry, "deleteToken: invalid uid {}", uid);
+        return false;
+    }
+
+    std::string tokenKey = std::string(RedisPrefix::USERTOKENPREFIX) + std::to_string(uid);
+    RedisMgr::getInstance().del(tokenKey);
+    Log::debug(LogModule::Registry, "deleteToken: uid={} key={}", uid, tokenKey);
+    return true;
+}
+
+// 统一清理用户登录数据：解绑节点 + 删除 token
+bool RedisNodeRegistryImpl::clearUserLoginData(int uid)
+{
+    if (uid <= 0)
+    {
+        Log::warn(LogModule::Registry, "clearUserLoginData: invalid uid {}", uid);
+        return false;
+    }
+
+    const auto start = std::chrono::steady_clock::now();
+    bool ok = true;
+
+    if (!unbindUser(uid))
+    {
+        Log::warn(LogModule::Registry, "clearUserLoginData: unbindUser failed uid={}", uid);
+        ok = false;
+    }
+
+    if (!deleteToken(uid))
+    {
+        Log::warn(LogModule::Registry, "clearUserLoginData: deleteToken failed uid={}", uid);
+        ok = false;
+    }
+
+    const auto cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                             std::chrono::steady_clock::now() - start)
+                             .count();
+    Log::info(LogModule::Registry, "clearUserLoginData: uid={} ok={} cost={}ms", uid, ok,
+              cost_ms);
+    return ok;
 }
 
 // 选取当前登录用户数最少的节点（简单负载均衡）

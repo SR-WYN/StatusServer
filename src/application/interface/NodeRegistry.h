@@ -52,6 +52,15 @@ public:
     // 解绑用户与节点的绑定关系。
     virtual bool unbindUser(int uid) = 0;
 
+    // 刷新登录 token 的 TTL。
+    virtual bool refreshTokenTTL(int uid) = 0;
+
+    // 删除登录 token。
+    virtual bool deleteToken(int uid) = 0;
+
+    // 统一清理用户的登录数据：解绑节点、删除 token、通知 GateServer 清理 session。
+    virtual bool clearUserLoginData(int uid) = 0;
+
     // 在所有存活节点中选取登录用户数最少的节点（负载均衡）。
     virtual std::optional<NodeInfo> selectLeastLoadedNode() = 0;
 

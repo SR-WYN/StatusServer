@@ -128,12 +128,10 @@ message BindUserToNodeRsp {
 
 message UnbindUserReq {
   int32 uid = 1;
-  string expected_node = 2;
 }
 
 message UnbindUserRsp {
   int32 error = 1;
-  bool skipped = 2;
 }
 
 message ValidateTokenReq {
@@ -246,4 +244,5 @@ service ChatService {
   rpc SendChatMsg(SendChatMsgReq) returns(SendChatMsgRsp);
   rpc NotifyAuthFriend(AuthFriendReq) returns(AuthFriendRsp);
   rpc NotifyTextChatMsg(TextChatMsgReq) returns(TextChatMsgRsp);
+  rpc KickUser(KickUserReq) returns (KickUserRsp);
 }

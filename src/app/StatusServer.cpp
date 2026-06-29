@@ -1,5 +1,6 @@
 // StatusServer.cpp - 状态服务器入口
 #include "ConfigMgr.h"
+#include "ChatNotifyClientImpl.h"
 #include "GateNotifyClientImpl.h"
 #include "Log.h"
 #include "RedisFileTokenRepositoryImpl.h"
@@ -63,7 +64,11 @@ void runServer()
         Log::warn(LogModule::App, "GateServer config missing, offline notification disabled");
     }
 
-    StatusServiceImpl service(registry, file_token_repo, gate_client);
+    // ChatServer 通知客户端：用于登录时通知旧节点踢人
+    auto chat_client = std::make_shared<ChatNotifyClientImpl>();
+    Log::info(LogModule::App, "ChatNotifyClient created");
+
+    StatusServiceImpl service(registry, file_token_repo, gate_client, chat_client);
 
     // 初始化线程池管理器
     ThreadPoolMgr::getInstance();
