@@ -1,39 +1,26 @@
-// utils.h - 工具函数集合（URL 编解码、UUID 生成等）
+// utils.h - 通用工具集合
 #pragma once
 #include <cstdint>
-#include <functional>
 #include <string>
 
-namespace utils
+namespace utils::url
 {
 
-// 将字节转换为十六进制字符
-unsigned char toHex(unsigned char x);
+std::string encode(const std::string &str);
+std::string decode(const std::string &str);
 
-// 将十六进制字符转换为字节
-unsigned char fromHex(unsigned char x);
+} // namespace utils::url
 
-// 对URL进行编码
-std::string urlEncode(const std::string &str);
+namespace utils::time
+{
 
-// 对URL进行解码
-std::string urlDecode(const std::string &str);
-
-std::string generateUniqueString();
-
-// 获取当前 Unix 时间戳（秒）
 int64_t nowSec();
 
-class Defer
+} // namespace utils::time
+
+namespace utils::uuid
 {
-public:
-    explicit Defer(std::function<void()> func);
-    ~Defer();
-    Defer(const Defer &) = delete;
-    Defer &operator=(const Defer &) = delete;
 
-private:
-    std::function<void()> _func;
-};
+std::string generate();
 
-} // namespace utils
+} // namespace utils::uuid

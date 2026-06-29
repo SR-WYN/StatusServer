@@ -95,7 +95,7 @@ Status StatusServiceImpl::GetChatServer(ServerContext *context, const GetChatSer
     // 5. 生成新 token 并保存（短 TTL）
     reply->set_host(server->client_host);
     reply->set_port(server->client_port);
-    reply->set_token(utils::generateUniqueString());
+    reply->set_token(utils::uuid::generate());
 
     if (!_registry->saveToken(uid, reply->token()))
     {
@@ -438,7 +438,7 @@ Status StatusServiceImpl::GetFileServer(ServerContext *context,
     reply->set_host(server->client_host);
     reply->set_port(server->client_port);
 
-    std::string token = utils::generateUniqueString();
+    std::string token = utils::uuid::generate();
     reply->set_token(token);
 
     if (!_file_token_repo->saveFileToken(request->uid(), token, 60))

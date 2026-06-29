@@ -1,26 +1,22 @@
-// utils.cpp - 工具函数实现
+// utils.cpp - 通用工具集合实现
 #include "utils.h"
-#include "boost/uuid/random_generator.hpp"
-#include "boost/uuid/uuid_io.hpp"
+#include <boost/uuid/random_generator.hpp>
+#include <boost/uuid/uuid_io.hpp>
 #include <chrono>
 
-int64_t utils::nowSec()
+namespace utils::url
 {
-    return std::chrono::duration_cast<std::chrono::seconds>(
-               std::chrono::system_clock::now().time_since_epoch())
-        .count();
-}
 
-unsigned char utils::toHex(unsigned char x)
+static unsigned char toHex(unsigned char x)
 {
     return x > 9 ? x + 55 : x + 48;
 }
 
-unsigned char utils::fromHex(unsigned char x)
+static unsigned char fromHex(unsigned char x)
 {
-    if (x >= 'A' && x <= 'Z')
+    if (x >= 'A' && x <= 'F')
         return x - 'A' + 10;
-    else if (x >= 'a' && x <= 'z')
+    else if (x >= 'a' && x <= 'f')
         return x - 'a' + 10;
     else if (x >= '0' && x <= '9')
         return x - '0';
@@ -28,7 +24,7 @@ unsigned char utils::fromHex(unsigned char x)
         return 0;
 }
 
-std::string utils::urlEncode(const std::string &str)
+std::string encode(const std::string &str)
 {
     std::string strTemp = "";
     for (unsigned char c : str)
@@ -44,14 +40,14 @@ std::string utils::urlEncode(const std::string &str)
         else
         {
             strTemp += '%';
-            strTemp += toHex(c >> 4);   // 取高4位
-            strTemp += toHex(c & 0x0F); // 取低4位
+            strTemp += toHex(c >> 4);
+            strTemp += toHex(c & 0x0F);
         }
     }
     return strTemp;
 }
 
-std::string utils::urlDecode(const std::string &str)
+std::string decode(const std::string &str)
 {
     std::string strTemp = "";
     size_t length = str.length();
@@ -75,21 +71,27 @@ std::string utils::urlDecode(const std::string &str)
     return strTemp;
 }
 
-std::string utils::generateUniqueString()
+} // namespace utils::url
+
+namespace utils::time
 {
-    // 创建UUID对象
+
+int64_t nowSec()
+{
+    return std::chrono::duration_cast<std::chrono::seconds>(
+               std::chrono::system_clock::now().time_since_epoch())
+        .count();
+}
+
+} // namespace utils::time
+
+namespace utils::uuid
+{
+
+std::string generate()
+{
     boost::uuids::uuid uuid = boost::uuids::random_generator()();
-    // 将UUID转换为字符串
-    std::string unique_string = to_string(uuid);
-    return unique_string;
+    return to_string(uuid);
 }
 
-utils::Defer::Defer(std::function<void()> func) : _func(func)
-{
-}
-
-utils::Defer::~Defer()
-{
-    if (_func)
-        _func();
-}
+} // namespace utils::uuid

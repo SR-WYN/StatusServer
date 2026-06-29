@@ -66,7 +66,7 @@ bool RedisNodeRegistryImpl::parseNode(const std::string &json, NodeInfo &out)
 // 判断节点是否存活（未过期）
 bool RedisNodeRegistryImpl::isAlive(const NodeInfo &node)
 {
-    return node.expire_at >= utils::nowSec();
+    return node.expire_at >= utils::time::nowSec();
 }
 
 // 保存用户 token 到 Redis，设置短 TTL
@@ -194,7 +194,7 @@ bool RedisNodeRegistryImpl::registerNode(const NodeInfo &node)
     }
 
     NodeInfo stored = node;
-    stored.expire_at = utils::nowSec() + NODE_TTL_SEC;
+    stored.expire_at = utils::time::nowSec() + NODE_TTL_SEC;
 
     auto &redis = RedisMgr::getInstance();
     if (!redis.hSet(RedisPrefix::REGISTERED_NODES, node.name, serializeNode(stored)))
@@ -271,7 +271,7 @@ bool RedisNodeRegistryImpl::heartbeat(const std::string &name, const std::string
     }
 
     NodeInfo updated = *existing;
-    updated.expire_at = utils::nowSec() + NODE_TTL_SEC;
+    updated.expire_at = utils::time::nowSec() + NODE_TTL_SEC;
 
     bool ok = RedisMgr::getInstance().hSet(RedisPrefix::REGISTERED_NODES, name, serializeNode(updated));
     const auto cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
