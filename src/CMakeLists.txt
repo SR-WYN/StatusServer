@@ -7,6 +7,7 @@ add_library(ss_includes INTERFACE)
 target_include_directories(ss_includes INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/common/utils
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/constants
     ${CMAKE_CURRENT_SOURCE_DIR}/domain
     ${CMAKE_CURRENT_SOURCE_DIR}/application
     ${CMAKE_CURRENT_SOURCE_DIR}/application/interface

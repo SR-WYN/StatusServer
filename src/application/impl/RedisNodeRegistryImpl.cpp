@@ -3,7 +3,9 @@
 #include "RedisNodeRegistryImpl.h"
 #include "Log.h"
 #include "RedisMgr.h"
+#include "business_constants.h"
 #include "const.h"
+#include "redis_keys.h"
 #include "utils.h"
 
 #include <chrono>
@@ -12,26 +14,16 @@
 #include <json/writer.h>
 #include <sstream>
 
-namespace
-{
-constexpr const char *kExpireAt = "expire_at";
-constexpr const char *kClientHost = "client_host";
-constexpr const char *kClientPort = "client_port";
-constexpr const char *kRpcHost = "rpc_host";
-constexpr const char *kRpcPort = "rpc_port";
-constexpr const char *kInstanceId = "instance_id";
-} // anonymous namespace
-
 // 将节点信息序列化为 JSON 字符串
 std::string RedisNodeRegistryImpl::serializeNode(const NodeInfo &node)
 {
     Json::Value root;
-    root[kClientHost] = node.client_host;
-    root[kClientPort] = node.client_port;
-    root[kRpcHost] = node.rpc_host;
-    root[kRpcPort] = node.rpc_port;
-    root[kInstanceId] = node.instance_id;
-    root[kExpireAt] = static_cast<Json::Int64>(node.expire_at);
+    root[constants::redis::kClientHost] = node.client_host;
+    root[constants::redis::kClientPort] = node.client_port;
+    root[constants::redis::kRpcHost] = node.rpc_host;
+    root[constants::redis::kRpcPort] = node.rpc_port;
+    root[constants::redis::kInstanceId] = node.instance_id;
+    root[constants::redis::kExpireAt] = static_cast<Json::Int64>(node.expire_at);
     Json::StreamWriterBuilder builder;
     builder["indentation"] = "";
     return Json::writeString(builder, root);
@@ -53,12 +45,12 @@ bool RedisNodeRegistryImpl::parseNode(const std::string &json, NodeInfo &out)
                   json.size(), preview);
         return false;
     }
-    out.client_host = root.get(kClientHost, "").asString();
-    out.client_port = root.get(kClientPort, "").asString();
-    out.rpc_host = root.get(kRpcHost, "").asString();
-    out.rpc_port = root.get(kRpcPort, "").asString();
-    out.instance_id = root.get(kInstanceId, "").asString();
-    out.expire_at = root.get(kExpireAt, static_cast<Json::Int64>(0)).asInt64();
+    out.client_host = root.get(constants::redis::kClientHost, "").asString();
+    out.client_port = root.get(constants::redis::kClientPort, "").asString();
+    out.rpc_host = root.get(constants::redis::kRpcHost, "").asString();
+    out.rpc_port = root.get(constants::redis::kRpcPort, "").asString();
+    out.instance_id = root.get(constants::redis::kInstanceId, "").asString();
+    out.expire_at = root.get(constants::redis::kExpireAt, static_cast<Json::Int64>(0)).asInt64();
     return !out.client_host.empty() && !out.client_port.empty() && !out.rpc_host.empty() &&
            !out.rpc_port.empty();
 }
@@ -73,15 +65,15 @@ bool RedisNodeRegistryImpl::isAlive(const NodeInfo &node)
 bool RedisNodeRegistryImpl::saveToken(int uid, const std::string &token)
 {
     std::string uidStr = std::to_string(uid);
-    std::string tokenKey = RedisPrefix::USERTOKENPREFIX + uidStr;
-    bool ok = RedisMgr::getInstance().setEx(tokenKey, token, TOKEN_TTL_SECONDS);
+    std::string tokenKey = constants::redis::kUserTokenPrefix + uidStr;
+    bool ok = RedisMgr::getInstance().setEx(tokenKey, token, constants::business::kTokenTtlSeconds);
     if (!ok)
     {
         Log::warn(LogModule::Registry, "saveToken: failed for uid={} key={}", uid, tokenKey);
         return false;
     }
     Log::debug(LogModule::Registry, "saveToken: uid={} token={} ttl={}s", uid, token,
-               TOKEN_TTL_SECONDS);
+               constants::business::kTokenTtlSeconds);
     return true;
 }
 
@@ -91,7 +83,7 @@ int RedisNodeRegistryImpl::validateToken(int uid, const std::string &token)
     std::string uidStr = std::to_string(uid);
 
     // 先检查普通登录 token
-    std::string userTokenKey = std::string(RedisPrefix::USERTOKENPREFIX) + uidStr;
+    std::string userTokenKey = std::string(constants::redis::kUserTokenPrefix) + uidStr;
     std::string storedToken;
     if (RedisMgr::getInstance().get(userTokenKey, storedToken) && storedToken == token)
     {
@@ -100,7 +92,7 @@ int RedisNodeRegistryImpl::validateToken(int uid, const std::string &token)
     }
 
     // 再检查文件传输临时 token
-    std::string fileTokenKey = std::string(RedisPrefix::FILETOKENPREFIX) + uidStr;
+    std::string fileTokenKey = std::string(constants::redis::kFileTokenPrefix) + uidStr;
     if (RedisMgr::getInstance().get(fileTokenKey, storedToken) && storedToken == token)
     {
         Log::debug(LogModule::Registry, "validateToken: file token matched uid={}", uid);
@@ -127,7 +119,7 @@ void RedisNodeRegistryImpl::cleanupExpiredNodes()
     Log::debug(LogModule::Registry, "cleanupExpiredNodes: scanning started");
 
     std::map<std::string, std::string> all;
-    if (!RedisMgr::getInstance().hGetAll(RedisPrefix::REGISTERED_NODES, all))
+    if (!RedisMgr::getInstance().hGetAll(constants::redis::kRegisteredNodesKey, all))
     {
         Log::warn(LogModule::Registry, "cleanupExpiredNodes: failed to get all nodes from Redis");
         return;
@@ -143,16 +135,16 @@ void RedisNodeRegistryImpl::cleanupExpiredNodes()
         {
             Log::warn(LogModule::Registry,
                       "cleanupExpiredNodes: invalid node JSON for '{}', removing", entry.first);
-            RedisMgr::getInstance().hDel(RedisPrefix::REGISTERED_NODES, entry.first);
-            RedisMgr::getInstance().hDel(RedisPrefix::LOGIN_COUNT, entry.first);
+            RedisMgr::getInstance().hDel(constants::redis::kRegisteredNodesKey, entry.first);
+            RedisMgr::getInstance().hDel(constants::redis::kLoginCountKey, entry.first);
             ++cleaned;
             continue;
         }
 
         if (!isAlive(node))
         {
-            RedisMgr::getInstance().hDel(RedisPrefix::REGISTERED_NODES, entry.first);
-            RedisMgr::getInstance().hDel(RedisPrefix::LOGIN_COUNT, entry.first);
+            RedisMgr::getInstance().hDel(constants::redis::kRegisteredNodesKey, entry.first);
+            RedisMgr::getInstance().hDel(constants::redis::kLoginCountKey, entry.first);
             ++cleaned;
             Log::info(LogModule::Registry,
                       "cleanupExpiredNodes: removed expired node {} (expired at {})",
@@ -194,16 +186,16 @@ bool RedisNodeRegistryImpl::registerNode(const NodeInfo &node)
     }
 
     NodeInfo stored = node;
-    stored.expire_at = utils::time::nowSec() + NODE_TTL_SEC;
+    stored.expire_at = utils::time::nowSec() + constants::business::kNodeTtlSeconds;
 
     auto &redis = RedisMgr::getInstance();
-    if (!redis.hSet(RedisPrefix::REGISTERED_NODES, node.name, serializeNode(stored)))
+    if (!redis.hSet(constants::redis::kRegisteredNodesKey, node.name, serializeNode(stored)))
     {
         Log::error(LogModule::Registry, "registerNode: failed to save node {} to Redis", node.name);
         return false;
     }
 
-    redis.hSet(RedisPrefix::LOGIN_COUNT, node.name, "0");
+    redis.hSet(constants::redis::kLoginCountKey, node.name, "0");
 
     const auto cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                              std::chrono::steady_clock::now() - start)
@@ -235,19 +227,19 @@ bool RedisNodeRegistryImpl::unregisterNode(const std::string &name, const std::s
     auto &redis = RedisMgr::getInstance();
 
     // 清理该节点绑定的所有用户
-    const std::string usersKey = std::string(RedisPrefix::NODE_USERS) + name;
+    const std::string usersKey = std::string(constants::redis::kNodeUsersPrefix) + name;
     std::vector<std::string> uids;
     redis.sMembers(usersKey, uids);
     Log::info(LogModule::Registry, "unregisterNode: removing node {}, clearing {} bound user(s)",
               name, uids.size());
     for (const auto &uidStr : uids)
     {
-        redis.del(std::string(RedisPrefix::USER_NODE) + uidStr);
+        redis.del(std::string(constants::redis::kUserNodePrefix) + uidStr);
     }
 
     redis.del(usersKey);
-    redis.hDel(RedisPrefix::REGISTERED_NODES, name);
-    redis.hDel(RedisPrefix::LOGIN_COUNT, name);
+    redis.hDel(constants::redis::kRegisteredNodesKey, name);
+    redis.hDel(constants::redis::kLoginCountKey, name);
 
     const auto cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                              std::chrono::steady_clock::now() - start)
@@ -271,9 +263,9 @@ bool RedisNodeRegistryImpl::heartbeat(const std::string &name, const std::string
     }
 
     NodeInfo updated = *existing;
-    updated.expire_at = utils::time::nowSec() + NODE_TTL_SEC;
+    updated.expire_at = utils::time::nowSec() + constants::business::kNodeTtlSeconds;
 
-    bool ok = RedisMgr::getInstance().hSet(RedisPrefix::REGISTERED_NODES, name, serializeNode(updated));
+    bool ok = RedisMgr::getInstance().hSet(constants::redis::kRegisteredNodesKey, name, serializeNode(updated));
     const auto cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                              std::chrono::steady_clock::now() - start)
                              .count();
@@ -292,7 +284,7 @@ bool RedisNodeRegistryImpl::heartbeat(const std::string &name, const std::string
 // 按名称查询节点，若不存在或已过期返回 nullopt
 std::optional<NodeInfo> RedisNodeRegistryImpl::getNode(const std::string &name)
 {
-    const std::string json = RedisMgr::getInstance().hGet(RedisPrefix::REGISTERED_NODES, name);
+    const std::string json = RedisMgr::getInstance().hGet(constants::redis::kRegisteredNodesKey, name);
     if (json.empty())
     {
         Log::debug(LogModule::Registry, "getNode: node {} not found in Redis", name);
@@ -315,7 +307,7 @@ std::vector<NodeInfo> RedisNodeRegistryImpl::listNodes()
     std::vector<NodeInfo> result;
     std::map<std::string, std::string> all;
 
-    if (!RedisMgr::getInstance().hGetAll(RedisPrefix::REGISTERED_NODES, all))
+    if (!RedisMgr::getInstance().hGetAll(constants::redis::kRegisteredNodesKey, all))
     {
         Log::warn(LogModule::Registry, "listNodes: failed to get all nodes from Redis");
         return result;
@@ -339,7 +331,7 @@ std::vector<NodeInfo> RedisNodeRegistryImpl::listNodes()
 std::optional<NodeInfo> RedisNodeRegistryImpl::getNodeForUser(int uid)
 {
     std::string nodeName;
-    if (!RedisMgr::getInstance().get(std::string(RedisPrefix::USER_NODE) + std::to_string(uid),
+    if (!RedisMgr::getInstance().get(std::string(constants::redis::kUserNodePrefix) + std::to_string(uid),
                                      nodeName) ||
         nodeName.empty())
     {
@@ -383,19 +375,19 @@ bool RedisNodeRegistryImpl::bindUser(int uid, const std::string &node_name)
 
     // 检查用户是否已绑定到其他节点，若是则解绑旧关系
     std::string oldNode;
-    if (redis.get(std::string(RedisPrefix::USER_NODE) + uidStr, oldNode) && !oldNode.empty() &&
+    if (redis.get(std::string(constants::redis::kUserNodePrefix) + uidStr, oldNode) && !oldNode.empty() &&
         oldNode != node_name)
     {
-        redis.sRem(std::string(RedisPrefix::NODE_USERS) + oldNode, uidStr);
+        redis.sRem(std::string(constants::redis::kNodeUsersPrefix) + oldNode, uidStr);
         Log::info(LogModule::Registry, "bindUser: moved user {} from old node {} to {}", uid,
                   oldNode, node_name);
     }
 
-    redis.set(std::string(RedisPrefix::USER_NODE) + uidStr, node_name);
-    redis.sAdd(std::string(RedisPrefix::NODE_USERS) + node_name, uidStr);
+    redis.set(std::string(constants::redis::kUserNodePrefix) + uidStr, node_name);
+    redis.sAdd(std::string(constants::redis::kNodeUsersPrefix) + node_name, uidStr);
 
     // 原子增加该节点的登录计数
-    auto newCount = RedisMgr::getInstance().hIncrBy(RedisPrefix::LOGIN_COUNT, node_name, 1);
+    auto newCount = RedisMgr::getInstance().hIncrBy(constants::redis::kLoginCountKey, node_name, 1);
     Log::info(LogModule::Registry, "bindUser: node {} login count incremented to {}", node_name,
               newCount);
 
@@ -416,21 +408,21 @@ bool RedisNodeRegistryImpl::unbindUser(int uid)
     auto &redis = RedisMgr::getInstance();
 
     std::string nodeName;
-    if (redis.get(std::string(RedisPrefix::USER_NODE) + uidStr, nodeName) && !nodeName.empty())
+    if (redis.get(std::string(constants::redis::kUserNodePrefix) + uidStr, nodeName) && !nodeName.empty())
     {
-        redis.sRem(std::string(RedisPrefix::NODE_USERS) + nodeName, uidStr);
+        redis.sRem(std::string(constants::redis::kNodeUsersPrefix) + nodeName, uidStr);
         Log::info(LogModule::Registry, "unbindUser: removed user {} from node {}", uid, nodeName);
     }
 
-    redis.del(std::string(RedisPrefix::USER_NODE) + uidStr);
+    redis.del(std::string(constants::redis::kUserNodePrefix) + uidStr);
 
     // 原子减少该节点的登录计数
     if (!nodeName.empty())
     {
-        auto newCount = RedisMgr::getInstance().hIncrBy(RedisPrefix::LOGIN_COUNT, nodeName, -1);
+        auto newCount = RedisMgr::getInstance().hIncrBy(constants::redis::kLoginCountKey, nodeName, -1);
         if (newCount <= 0)
         {
-            RedisMgr::getInstance().hDel(RedisPrefix::LOGIN_COUNT, nodeName);
+            RedisMgr::getInstance().hDel(constants::redis::kLoginCountKey, nodeName);
             Log::info(LogModule::Registry, "unbindUser: node {} login count removed (reached 0)",
                       nodeName);
         }
@@ -454,14 +446,14 @@ bool RedisNodeRegistryImpl::refreshTokenTTL(int uid)
         return false;
     }
 
-    std::string tokenKey = std::string(RedisPrefix::USERTOKENPREFIX) + std::to_string(uid);
-    if (!RedisMgr::getInstance().expire(tokenKey, TOKEN_TTL_SECONDS))
+    std::string tokenKey = std::string(constants::redis::kUserTokenPrefix) + std::to_string(uid);
+    if (!RedisMgr::getInstance().expire(tokenKey, constants::business::kTokenTtlSeconds))
     {
         Log::warn(LogModule::Registry, "refreshTokenTTL: failed for uid={} key={}", uid,
                   tokenKey);
         return false;
     }
-    Log::debug(LogModule::Registry, "refreshTokenTTL: uid={} ttl={}s", uid, TOKEN_TTL_SECONDS);
+    Log::debug(LogModule::Registry, "refreshTokenTTL: uid={} ttl={}s", uid, constants::business::kTokenTtlSeconds);
     return true;
 }
 
@@ -474,7 +466,7 @@ bool RedisNodeRegistryImpl::deleteToken(int uid)
         return false;
     }
 
-    std::string tokenKey = std::string(RedisPrefix::USERTOKENPREFIX) + std::to_string(uid);
+    std::string tokenKey = std::string(constants::redis::kUserTokenPrefix) + std::to_string(uid);
     RedisMgr::getInstance().del(tokenKey);
     Log::debug(LogModule::Registry, "deleteToken: uid={} key={}", uid, tokenKey);
     return true;
@@ -536,7 +528,7 @@ std::optional<NodeInfo> RedisNodeRegistryImpl::selectLeastLoadedNode()
             continue;
         }
 
-        auto countStr = RedisMgr::getInstance().hGet(RedisPrefix::LOGIN_COUNT, node.name);
+        auto countStr = RedisMgr::getInstance().hGet(constants::redis::kLoginCountKey, node.name);
         int count = countStr.empty() ? INT_MAX : std::stoi(countStr);
         if (!load_details.empty())
         {

@@ -3,10 +3,11 @@
 #include "RedisMgr.h"
 #include "const.h"
 #include "Log.h"
+#include "redis_keys.h"
 
 bool RedisFileTokenRepositoryImpl::saveFileToken(int uid, const std::string& token, int ttl_sec)
 {
-    std::string key = std::string(RedisPrefix::FILETOKENPREFIX) + std::to_string(uid);
+    std::string key = std::string(constants::redis::kFileTokenPrefix) + std::to_string(uid);
     bool ok = RedisMgr::getInstance().setEx(key, token, ttl_sec);
     if (ok)
     {
@@ -22,7 +23,7 @@ bool RedisFileTokenRepositoryImpl::saveFileToken(int uid, const std::string& tok
 
 bool RedisFileTokenRepositoryImpl::deleteFileToken(int uid)
 {
-    std::string key = std::string(RedisPrefix::FILETOKENPREFIX) + std::to_string(uid);
+    std::string key = std::string(constants::redis::kFileTokenPrefix) + std::to_string(uid);
     int del = RedisMgr::getInstance().del(key);
     if (del < 0)
     {

@@ -28,19 +28,3 @@ enum ErrorCodes
     TOKEN_INVALID = 1012,     // 令牌无效
 };
 
-namespace RedisPrefix
-{
-constexpr const char *CODE = "code_";
-constexpr const char *USERTOKENPREFIX = "utoken_";
-constexpr const char *FILETOKENPREFIX = "ftoken_";
-constexpr const char *IPCOUNTPREFIX = "ipcount_";
-constexpr const char *USER_BASE_INFO = "ubaseinfo_";
-constexpr const char *LOGIN_COUNT = "logincount";
-constexpr const char *REGISTERED_NODES = "registered_nodes";
-constexpr const char *USER_NODE = "user_node_";
-constexpr const char *NODE_USERS = "node_users_";
-constexpr const char *USER_OFFLINE_CHANNEL = "user_offline";
-} // namespace RedisPrefix
-
-constexpr int NODE_TTL_SEC = 30;
-constexpr int TOKEN_TTL_SECONDS = 300;  // 登录 token TTL，默认 5 分钟，可配置
