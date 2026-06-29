@@ -88,7 +88,7 @@ Status StatusServiceImpl::GetChatServer(ServerContext *context, const GetChatSer
     if (!server)
     {
         Log::warn(LogModule::Grpc, "GetChatServer: no available chat server for uid={}", uid);
-        reply->set_error(ErrorCodes::RPCFAILED);
+        reply->set_error(ErrorCodes::RPC_FAILED);
         return Status::OK;
     }
 
@@ -100,7 +100,7 @@ Status StatusServiceImpl::GetChatServer(ServerContext *context, const GetChatSer
     if (!_registry->saveToken(uid, reply->token()))
     {
         Log::error(LogModule::Grpc, "GetChatServer: failed to save token for uid={}", uid);
-        reply->set_error(ErrorCodes::RPCFAILED);
+        reply->set_error(ErrorCodes::RPC_FAILED);
         return Status::OK;
     }
 
@@ -148,7 +148,7 @@ Status StatusServiceImpl::RegisterNode(ServerContext *context,
     {
         Log::warn(LogModule::Grpc, "RegisterNode: rejected or failed for node {}",
                   request->name());
-        reply->set_error(ErrorCodes::RPCFAILED);
+        reply->set_error(ErrorCodes::RPC_FAILED);
         return Status::OK;
     }
 
@@ -176,7 +176,7 @@ Status StatusServiceImpl::UnregisterNode(ServerContext *context,
     {
         Log::warn(LogModule::Grpc, "UnregisterNode: failed for node {} instance {}",
                   request->name(), request->instance_id());
-        reply->set_error(ErrorCodes::RPCFAILED);
+        reply->set_error(ErrorCodes::RPC_FAILED);
         return Status::OK;
     }
 
@@ -202,7 +202,7 @@ Status StatusServiceImpl::HeartbeatNode(ServerContext *context,
     {
         Log::warn(LogModule::Grpc, "HeartbeatNode: failed for node {} instance {}",
                   request->name(), request->instance_id());
-        reply->set_error(ErrorCodes::RPCFAILED);
+        reply->set_error(ErrorCodes::RPC_FAILED);
         return Status::OK;
     }
 
@@ -266,7 +266,7 @@ Status StatusServiceImpl::BindUserToNode(ServerContext *context, const BindUserT
     {
         Log::warn(LogModule::Grpc, "BindUserToNode: failed to bind uid={} to node {}",
                    request->uid(), request->node_name());
-        reply->set_error(ErrorCodes::RPCFAILED);
+        reply->set_error(ErrorCodes::RPC_FAILED);
         return Status::OK;
     }
 
@@ -298,7 +298,7 @@ Status StatusServiceImpl::UnbindUser(ServerContext *context, const UnbindUserReq
     if (!_registry->clearUserLoginData(uid))
     {
         Log::warn(LogModule::Grpc, "UnbindUser: failed to clear login data uid={}", uid);
-        reply->set_error(ErrorCodes::RPCFAILED);
+        reply->set_error(ErrorCodes::RPC_FAILED);
         return Status::OK;
     }
 
@@ -364,7 +364,7 @@ Status StatusServiceImpl::RefreshTokenTTL(ServerContext *context,
     if (!_registry->refreshTokenTTL(uid))
     {
         Log::warn(LogModule::Grpc, "RefreshTokenTTL: failed for uid={}", uid);
-        reply->set_error(ErrorCodes::RPCFAILED);
+        reply->set_error(ErrorCodes::RPC_FAILED);
         return Status::OK;
     }
 
@@ -431,7 +431,7 @@ Status StatusServiceImpl::GetFileServer(ServerContext *context,
     {
         Log::warn(LogModule::Grpc, "GetFileServer: no available file server for uid={}",
                   request->uid());
-        reply->set_error(ErrorCodes::RPCFAILED);
+        reply->set_error(ErrorCodes::RPC_FAILED);
         return Status::OK;
     }
 
@@ -445,7 +445,7 @@ Status StatusServiceImpl::GetFileServer(ServerContext *context,
     {
         Log::error(LogModule::Grpc, "GetFileServer: failed to save file token for uid={}",
                    request->uid());
-        reply->set_error(ErrorCodes::RPCFAILED);
+        reply->set_error(ErrorCodes::RPC_FAILED);
         return Status::OK;
     }
 
