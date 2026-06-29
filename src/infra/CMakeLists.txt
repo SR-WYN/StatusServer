@@ -7,6 +7,7 @@ add_library(ss_infra INTERFACE)
 
 target_link_libraries(ss_infra INTERFACE
     ss_includes
+    common
     ss_domain
     ss_base
     ss_log
