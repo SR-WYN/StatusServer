@@ -43,3 +43,4 @@ constexpr const char *USER_OFFLINE_CHANNEL = "user_offline";
 } // namespace RedisPrefix
 
 constexpr int NODE_TTL_SEC = 30;
+constexpr int TOKEN_TTL_SECONDS = 300;  // 登录 token TTL，默认 5 分钟，可配置

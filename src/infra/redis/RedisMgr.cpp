@@ -158,6 +158,22 @@ bool RedisMgr::existsKey(const std::string &key)
     }
 }
 
+bool RedisMgr::expire(const std::string &key, int ttl_seconds)
+{
+    RedisLogGuard guard("EXPIRE", key);
+    try
+    {
+        auto ok = _redis->expire(key, std::chrono::seconds(ttl_seconds));
+        Log::debug(LogModule::Redis, "EXPIRE {} ttl={}s ok={}", key, ttl_seconds, ok);
+        return ok;
+    }
+    catch (const sw::redis::Error &e)
+    {
+        Log::error(LogModule::Redis, "EXPIRE {} {}s failed: {}", key, ttl_seconds, e.what());
+        return false;
+    }
+}
+
 bool RedisMgr::hSet(const std::string &key, const std::string &field, const std::string &value)
 {
     RedisLogGuard guard("HSET", key, field);

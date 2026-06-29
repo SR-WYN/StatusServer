@@ -10,7 +10,8 @@
   },
   "StatusServer": {
     "Host": "127.0.0.1",
-    "Port": "50052"
+    "Port": "50052",
+    "TokenTtlSeconds": 300
   },
   "GateServer": {
     "Host": "127.0.0.1",

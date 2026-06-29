@@ -21,6 +21,7 @@ public:
     bool setEx(const std::string &key, const std::string &value, int ttl_sec);
     bool del(const std::string &key);
     bool existsKey(const std::string &key);
+    bool expire(const std::string &key, int ttl_seconds);
 
     // Hash 操作
     bool hSet(const std::string &key, const std::string &field, const std::string &value);
