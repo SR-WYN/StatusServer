@@ -420,17 +420,13 @@ bool RedisNodeRegistryImpl::unbindUser(int uid)
     if (!nodeName.empty())
     {
         auto newCount = RedisMgr::getInstance().hIncrBy(constants::redis::kLoginCountKey, nodeName, -1);
-        if (newCount <= 0)
+        if (newCount < 0)
         {
-            RedisMgr::getInstance().hDel(constants::redis::kLoginCountKey, nodeName);
-            Log::info(LogModule::Registry, "unbindUser: node {} login count removed (reached 0)",
-                      nodeName);
+            RedisMgr::getInstance().hSet(constants::redis::kLoginCountKey, nodeName, "0");
+            newCount = 0;
         }
-        else
-        {
-            Log::info(LogModule::Registry, "unbindUser: node {} login count decremented to {}",
-                      nodeName, newCount);
-        }
+        Log::info(LogModule::Registry, "unbindUser: node {} login count updated to {}", nodeName,
+                  newCount);
     }
 
     Log::info(LogModule::Registry, "unbindUser: user {} unbound", uid);
