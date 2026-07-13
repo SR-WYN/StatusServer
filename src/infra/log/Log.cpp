@@ -4,22 +4,7 @@
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/null_sink.h>
 
-#include <filesystem>
 #include <utility>
-
-namespace
-{
-std::filesystem::path logRoot(const LogConfig &config)
-{
-    std::error_code ec;
-    std::filesystem::path dir = config._dir.empty() ? "src/logdir" : config._dir;
-    if (dir.is_absolute())
-    {
-        return dir;
-    }
-    return std::filesystem::current_path(ec) / dir;
-}
-} // namespace
 
 std::mutex Log::_mutex;
 std::unordered_map<std::string, std::shared_ptr<spdlog::logger>> Log::_loggers;
@@ -44,7 +29,7 @@ bool Log::init(std::string_view app_name, const LogConfig &cfg)
     _config = cfg;
 
     std::error_code ec;
-    const std::filesystem::path log_root = logRoot(_config);
+    const std::filesystem::path log_root = Log::logRoot(_config);
     std::filesystem::create_directories(log_root, ec);
     if (ec)
     {
@@ -77,9 +62,20 @@ void Log::shutdown()
     _app_name.clear();
 }
 
+std::filesystem::path Log::logRoot(const LogConfig &config)
+{
+    std::error_code ec;
+    std::filesystem::path dir = config._dir.empty() ? "src/logdir" : config._dir;
+    if (dir.is_absolute())
+    {
+        return dir;
+    }
+    return std::filesystem::current_path(ec) / dir;
+}
+
 std::shared_ptr<spdlog::logger> Log::createModuleLogger(const std::string &module_file)
 {
-    const std::filesystem::path log_root = logRoot(_config);
+    const std::filesystem::path log_root = Log::logRoot(_config);
     const std::filesystem::path log_path = log_root / (module_file + ".log");
     auto sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(log_path.string(), true);
     auto module_logger =

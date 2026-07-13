@@ -6,6 +6,7 @@
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 
+#include <filesystem>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -66,6 +67,7 @@ private:
     static spdlog::logger &logger(LogModule module);
     static spdlog::logger &logger(std::string_view module_file);
     static std::shared_ptr<spdlog::logger> createModuleLogger(const std::string &module_file);
+    static std::filesystem::path logRoot(const LogConfig &config);
 
     static std::mutex _mutex;
     static std::unordered_map<std::string, std::shared_ptr<spdlog::logger>> _loggers;

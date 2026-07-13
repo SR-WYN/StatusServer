@@ -6,8 +6,6 @@
 #include <chrono>
 #include <sstream>
 
-namespace
-{
 // Redis 操作日志守卫：记录入口、出口耗时，对慢操作打 warn
 class RedisLogGuard
 {
@@ -44,7 +42,6 @@ private:
     std::string _key;
     std::chrono::steady_clock::time_point _start;
 };
-} // namespace
 
 RedisMgr::RedisMgr()
 {

@@ -1,6 +1,7 @@
 // utils.h - 通用工具集合
 #pragma once
 #include <cstdint>
+#include <spdlog/common.h>
 #include <string>
 
 namespace utils::url
@@ -24,3 +25,10 @@ namespace utils::uuid
 std::string generate();
 
 } // namespace utils::uuid
+
+namespace utils::log
+{
+
+spdlog::level::level_enum parseLevel(const std::string &level_str);
+
+} // namespace utils::log
