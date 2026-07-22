@@ -59,4 +59,27 @@ set_source_files_properties(${PROTO_SRCS} ${PROTO_HDRS} PROPERTIES GENERATED TRU
 # 静态库在链接可执行文件之前编译，需显式依赖生成的 .pb.h，否则 grpc/mysql 等目标先于 protoc 运行
 add_custom_target(ss_proto_gen DEPENDS ${PROTO_SRCS} ${PROTO_HDRS})
 
+# --- 单元测试 ---
+option(BUILD_TESTING "Build unit tests" ON)
+
+if(BUILD_TESTING)
+    enable_testing()
+    include(FetchContent)
+
+    set(_SHARED_GTEST_SRC "${CMAKE_CURRENT_SOURCE_DIR}/../.deps/googletest-src")
+    if(EXISTS "${_SHARED_GTEST_SRC}")
+        set(FETCHCONTENT_SOURCE_DIR_GOOGLETEST "${_SHARED_GTEST_SRC}" CACHE PATH "Path to pre-downloaded googletest source" FORCE)
+    endif()
+
+    FetchContent_Declare(
+        googletest
+        GIT_REPOSITORY https://github.com/google/googletest.git
+        GIT_TAG        v1.14.0
+    )
+    set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(googletest)
+
+    add_subdirectory(tests)
+endif()
+
 add_subdirectory(src)
