@@ -62,16 +62,44 @@ bool RedisNodeRegistryImpl::isAlive(const NodeInfo &node)
 }
 
 // 保存用户 token 到 Redis，设置短 TTL
+// 主数据：utoken:{token} -> Hash{uid, token}
+// 查找索引：utoken_{uid} -> token（用于 deleteToken / refreshTokenTTL）
 bool RedisNodeRegistryImpl::saveToken(int uid, const std::string &token)
 {
-    std::string uidStr = std::to_string(uid);
-    std::string tokenKey = constants::redis::kUserTokenPrefix + uidStr;
-    bool ok = RedisMgr::getInstance().setEx(tokenKey, token, constants::business::kTokenTtlSeconds);
-    if (!ok)
+    if (token.empty())
     {
-        Log::warn(LogModule::Registry, "saveToken: failed for uid={} key={}", uid, tokenKey);
+        Log::warn(LogModule::Registry, "saveToken: empty token for uid={}", uid);
         return false;
     }
+
+    std::string uidStr = std::to_string(uid);
+    std::string tokenKey = std::string(constants::redis::kUserTokenPrefix) + token;
+    std::string lookupKey = std::string(constants::redis::kUserTokenLookupPrefix) + uidStr;
+
+    auto &redis = RedisMgr::getInstance();
+
+    // 先写主 Hash key
+    bool ok = redis.hSet(tokenKey, "uid", uidStr) &&
+              redis.hSet(tokenKey, "token", token) &&
+              redis.expire(tokenKey, constants::business::kTokenTtlSeconds);
+    if (!ok)
+    {
+        Log::warn(LogModule::Registry, "saveToken: failed to write token key uid={} key={}",
+                  uid, tokenKey);
+        redis.del(tokenKey);
+        return false;
+    }
+
+    // 再写 uid -> token 查找索引
+    if (!redis.setEx(lookupKey, token, constants::business::kTokenTtlSeconds))
+    {
+        Log::warn(LogModule::Registry, "saveToken: failed to write lookup key uid={} key={}",
+                  uid, lookupKey);
+        // 回滚主 key，避免只有认证数据没有查找索引
+        redis.del(tokenKey);
+        return false;
+    }
+
     Log::debug(LogModule::Registry, "saveToken: uid={} token={} ttl={}s", uid, token,
                constants::business::kTokenTtlSeconds);
     return true;
@@ -80,36 +108,70 @@ bool RedisNodeRegistryImpl::saveToken(int uid, const std::string &token)
 // 验证用户 token（同时支持登录 token 和文件传输临时 token）
 int RedisNodeRegistryImpl::validateToken(int uid, const std::string &token)
 {
-    std::string uidStr = std::to_string(uid);
-
-    // 先检查普通登录 token
-    std::string userTokenKey = std::string(constants::redis::kUserTokenPrefix) + uidStr;
-    std::string storedToken;
-    if (RedisMgr::getInstance().get(userTokenKey, storedToken) && storedToken == token)
+    if (token.empty())
     {
-        Log::debug(LogModule::Registry, "validateToken: user token matched uid={}", uid);
-        return ErrorCodes::SUCCESS;
+        Log::warn(LogModule::Registry, "validateToken: empty token for uid={}", uid);
+        return ErrorCodes::TOKEN_INVALID;
     }
 
-    // 再检查文件传输临时 token
+    // 1. 先检查以 token 为主 key 的登录 token
+    std::string tokenKey = std::string(constants::redis::kUserTokenPrefix) + token;
+    std::map<std::string, std::string> fields;
+    if (RedisMgr::getInstance().hGetAll(tokenKey, fields))
+    {
+        auto itUid = fields.find("uid");
+        auto itToken = fields.find("token");
+        if (itUid != fields.end() && itToken != fields.end() &&
+            itUid->second == std::to_string(uid) && itToken->second == token)
+        {
+            Log::debug(LogModule::Registry, "validateToken: user token matched uid={}", uid);
+            return ErrorCodes::SUCCESS;
+        }
+    }
+
+    // 2. 再检查文件传输临时 token（仍按 uid 索引）
+    std::string uidStr = std::to_string(uid);
     std::string fileTokenKey = std::string(constants::redis::kFileTokenPrefix) + uidStr;
+    std::string storedToken;
     if (RedisMgr::getInstance().get(fileTokenKey, storedToken) && storedToken == token)
     {
         Log::debug(LogModule::Registry, "validateToken: file token matched uid={}", uid);
         return ErrorCodes::SUCCESS;
     }
 
-    if (storedToken.empty())
-    {
-        Log::warn(LogModule::Registry, "validateToken: no token found for uid={}", uid);
-    }
-    else
-    {
-        Log::warn(LogModule::Registry,
-                  "validateToken: token mismatch for uid={} expected={} actual={}", uid,
-                  storedToken, token);
-    }
+    Log::warn(LogModule::Registry, "validateToken: failed uid={} token={}", uid, token);
     return ErrorCodes::TOKEN_INVALID;
+}
+
+// 通过 token 反查 uid
+int RedisNodeRegistryImpl::resolveToken(const std::string &token)
+{
+    if (token.empty())
+    {
+        Log::warn(LogModule::Registry, "resolveToken: empty token");
+        return 0;
+    }
+
+    std::string tokenKey = std::string(constants::redis::kUserTokenPrefix) + token;
+    std::string uidStr = RedisMgr::getInstance().hGet(tokenKey, "uid");
+    if (uidStr.empty())
+    {
+        Log::warn(LogModule::Registry, "resolveToken: token not found key={}", tokenKey);
+        return 0;
+    }
+
+    try
+    {
+        int uid = std::stoi(uidStr);
+        Log::debug(LogModule::Registry, "resolveToken: token -> uid={}", uid);
+        return uid;
+    }
+    catch (const std::exception &e)
+    {
+        Log::error(LogModule::Registry, "resolveToken: invalid uid string uidStr={} err={}",
+                   uidStr, e.what());
+        return 0;
+    }
 }
 
 // 清理 Redis 中所有已过期的节点记录及其登录计数
@@ -442,15 +504,25 @@ bool RedisNodeRegistryImpl::refreshTokenTTL(int uid)
         return false;
     }
 
-    std::string tokenKey = std::string(constants::redis::kUserTokenPrefix) + std::to_string(uid);
-    if (!RedisMgr::getInstance().expire(tokenKey, constants::business::kTokenTtlSeconds))
+    // 通过 uid -> token 查找索引定位主 key
+    std::string uidStr = std::to_string(uid);
+    std::string lookupKey = std::string(constants::redis::kUserTokenLookupPrefix) + uidStr;
+    std::string token;
+    if (!RedisMgr::getInstance().get(lookupKey, token) || token.empty())
     {
-        Log::warn(LogModule::Registry, "refreshTokenTTL: failed for uid={} key={}", uid,
-                  tokenKey);
+        Log::warn(LogModule::Registry, "refreshTokenTTL: no token for uid={}", uid);
         return false;
     }
-    Log::debug(LogModule::Registry, "refreshTokenTTL: uid={} ttl={}s", uid, constants::business::kTokenTtlSeconds);
-    return true;
+
+    std::string tokenKey = std::string(constants::redis::kUserTokenPrefix) + token;
+    auto &redis = RedisMgr::getInstance();
+    bool ok1 = redis.expire(tokenKey, constants::business::kTokenTtlSeconds);
+    bool ok2 = redis.expire(lookupKey, constants::business::kTokenTtlSeconds);
+
+    Log::debug(LogModule::Registry,
+               "refreshTokenTTL: uid={} tokenKey={} ok1={} ok2={} ttl={}s", uid, tokenKey, ok1,
+               ok2, constants::business::kTokenTtlSeconds);
+    return ok1 && ok2;
 }
 
 // 删除登录 token
@@ -462,10 +534,26 @@ bool RedisNodeRegistryImpl::deleteToken(int uid)
         return false;
     }
 
-    std::string tokenKey = std::string(constants::redis::kUserTokenPrefix) + std::to_string(uid);
-    RedisMgr::getInstance().del(tokenKey);
-    Log::debug(LogModule::Registry, "deleteToken: uid={} key={}", uid, tokenKey);
-    return true;
+    // 通过 uid -> token 查找索引定位主 key
+    std::string uidStr = std::to_string(uid);
+    std::string lookupKey = std::string(constants::redis::kUserTokenLookupPrefix) + uidStr;
+    std::string token;
+    if (!RedisMgr::getInstance().get(lookupKey, token))
+    {
+        Log::warn(LogModule::Registry, "deleteToken: no token for uid={}", uid);
+        return false;
+    }
+
+    auto &redis = RedisMgr::getInstance();
+    bool ok = redis.del(lookupKey);
+    if (!token.empty())
+    {
+        std::string tokenKey = std::string(constants::redis::kUserTokenPrefix) + token;
+        redis.del(tokenKey);
+    }
+
+    Log::debug(LogModule::Registry, "deleteToken: uid={} token={} ok={}", uid, token, ok);
+    return ok;
 }
 
 // 统一清理用户登录数据：解绑节点 + 删除 token

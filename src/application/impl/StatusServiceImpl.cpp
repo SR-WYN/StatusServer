@@ -462,6 +462,39 @@ Status StatusServiceImpl::ValidateToken(ServerContext *context, const ValidateTo
     return Status::OK;
 }
 
+Status StatusServiceImpl::ResolveToken(ServerContext *context, const ResolveTokenReq *request,
+                                     ResolveTokenRsp *reply)
+{
+    (void)context;
+    const auto start = std::chrono::steady_clock::now();
+    const std::string &token = request->token();
+    Log::info(LogModule::Grpc, "ResolveToken: token_len={}", token.length());
+
+    if (token.empty())
+    {
+        Log::warn(LogModule::Grpc, "ResolveToken: empty token");
+        reply->set_error(ErrorCodes::TOKEN_INVALID);
+        return Status::OK;
+    }
+
+    int uid = _registry->resolveToken(token);
+    if (uid <= 0)
+    {
+        Log::warn(LogModule::Grpc, "ResolveToken: invalid token");
+        reply->set_error(ErrorCodes::TOKEN_INVALID);
+        return Status::OK;
+    }
+
+    reply->set_error(ErrorCodes::SUCCESS);
+    reply->set_uid(uid);
+
+    const auto cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                             std::chrono::steady_clock::now() - start)
+                             .count();
+    Log::debug(LogModule::Grpc, "ResolveToken: success uid={} cost={}ms", uid, cost_ms);
+    return Status::OK;
+}
+
 Status StatusServiceImpl::GetFileServer(ServerContext *context,
                                         const GetFileServerReq *request,
                                         GetFileServerRsp *reply)

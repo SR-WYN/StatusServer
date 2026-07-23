@@ -144,6 +144,15 @@ message ValidateTokenRsp {
   int32 uid = 2;
 }
 
+message ResolveTokenReq {
+  string token = 1;
+}
+
+message ResolveTokenRsp {
+  int32 error = 1;
+  int32 uid = 2;
+}
+
 // GateServer 通知服务（供 StatusServer 调用）
 message UserOfflineReq {
   int32 uid = 1;
@@ -175,6 +184,7 @@ service StatusService {
   rpc BindUserToNode(BindUserToNodeReq) returns (BindUserToNodeRsp);
   rpc UnbindUser(UnbindUserReq) returns (UnbindUserRsp);
   rpc ValidateToken(ValidateTokenReq) returns (ValidateTokenRsp);
+  rpc ResolveToken(ResolveTokenReq) returns (ResolveTokenRsp);
   rpc GetFileServer(GetFileServerReq) returns (GetFileServerRsp);
   rpc DeleteFileToken(DeleteFileTokenReq) returns (DeleteFileTokenRsp);
   rpc RefreshTokenTTL(RefreshTokenTTLReq) returns (RefreshTokenTTLRsp);

@@ -72,4 +72,7 @@ public:
 
     // 验证用户 token。返回错误码：SUCCESS / UID_INVALID / TOKEN_INVALID。
     virtual int validateToken(int uid, const std::string &token) = 0;
+
+    // 通过 token 反查 uid。token 无效或不存在返回 0。
+    virtual int resolveToken(const std::string &token) = 0;
 };

@@ -32,6 +32,8 @@ using message::LogoutRsp;
 using message::RefreshTokenTTLReq;
 using message::RefreshTokenTTLRsp;
 using message::RegisterNodeReq;
+using message::ResolveTokenReq;
+using message::ResolveTokenRsp;
 using message::UserOnlineReq;
 using message::UserOnlineRsp;
 using message::RegisterNodeRsp;
@@ -101,6 +103,10 @@ public:
     // FileServer 调用：验证 Token 有效性
     Status ValidateToken(ServerContext *context, const ValidateTokenReq *request,
                          ValidateTokenRsp *reply) override;
+
+    // ChatServer 调用：通过 token 解析 uid
+    Status ResolveToken(ServerContext *context, const ResolveTokenReq *request,
+                        ResolveTokenRsp *reply) override;
 
     // ChatServer 调用：获取一个可用的 FileServer 地址及临时 token
     Status GetFileServer(ServerContext *context, const GetFileServerReq *request,

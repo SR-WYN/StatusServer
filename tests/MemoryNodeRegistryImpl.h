@@ -98,7 +98,12 @@ public:
 
     bool deleteToken(int uid) override
     {
-        user_tokens_.erase(uid);
+        auto it = user_tokens_.find(uid);
+        if (it != user_tokens_.end())
+        {
+            token_to_uid_.erase(it->second);
+            user_tokens_.erase(it);
+        }
         return true;
     }
 
@@ -137,7 +142,16 @@ public:
         if (uid <= 0)
             return false;
         user_tokens_[uid] = token;
+        token_to_uid_[token] = uid;
         return true;
+    }
+
+    int resolveToken(const std::string &token) override
+    {
+        auto it = token_to_uid_.find(token);
+        if (it != token_to_uid_.end())
+            return it->second;
+        return 0;
     }
 
     // 测试辅助：保存文件传输 token
@@ -171,5 +185,6 @@ private:
     std::map<std::string, std::set<std::string>> node_users_;
     std::map<std::string, int> login_count_;
     std::map<int, std::string> user_tokens_;
+    std::map<std::string, int> token_to_uid_;
     std::map<int, std::string> file_tokens_;
 };

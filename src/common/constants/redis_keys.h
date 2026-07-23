@@ -6,7 +6,10 @@ namespace constants::redis
 
 // Redis key 前缀
 constexpr const char *kCodePrefix = "code_";
-constexpr const char *kUserTokenPrefix = "utoken_";
+// token 认证数据主 key：utoken:{token} -> Hash{uid, token}
+constexpr const char *kUserTokenPrefix = "utoken:";
+// uid -> token 查找索引，仅用于 deleteToken / refreshTokenTTL 等管理操作
+constexpr const char *kUserTokenLookupPrefix = "utoken_";
 constexpr const char *kFileTokenPrefix = "ftoken_";
 constexpr const char *kIpCountPrefix = "ipcount_";
 constexpr const char *kUserBaseInfoPrefix = "ubaseinfo_";
