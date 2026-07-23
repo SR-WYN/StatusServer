@@ -45,6 +45,29 @@ void StatusServiceImpl::notifyGateUserOffline(int uid)
     });
 }
 
+// 异步通知 GateServer 刷新用户 session TTL
+void StatusServiceImpl::notifyGateUserOnline(int uid)
+{
+    if (!_gate_client)
+    {
+        Log::debug(LogModule::Grpc, "notifyGateUserOnline: no gate client configured");
+        return;
+    }
+
+    int uidCopy = uid;
+    auto gateClient = _gate_client;
+    ThreadPoolMgr::getInstance().enqueueGrpcClient([gateClient, uidCopy]() {
+        if (!gateClient->notifyUserOnline(uidCopy))
+        {
+            Log::warn(LogModule::Grpc, "notifyGateUserOnline: failed for uid={}", uidCopy);
+        }
+        else
+        {
+            Log::info(LogModule::Grpc, "notifyGateUserOnline: success for uid={}", uidCopy);
+        }
+    });
+}
+
 Status StatusServiceImpl::GetChatServer(ServerContext *context, const GetChatServerReq *request,
                                         GetChatServerRsp *reply)
 {
@@ -374,6 +397,34 @@ Status StatusServiceImpl::RefreshTokenTTL(ServerContext *context,
                              std::chrono::steady_clock::now() - start)
                              .count();
     Log::debug(LogModule::Grpc, "RefreshTokenTTL: uid={} cost={}ms", uid, cost_ms);
+    return Status::OK;
+}
+
+Status StatusServiceImpl::NotifyUserOnline(ServerContext *context,
+                                           const UserOnlineReq *request,
+                                           UserOnlineRsp *reply)
+{
+    (void)context;
+    const auto start = std::chrono::steady_clock::now();
+    int uid = request->uid();
+    Log::info(LogModule::Grpc, "NotifyUserOnline: uid={}", uid);
+
+    if (uid <= 0)
+    {
+        Log::warn(LogModule::Grpc, "NotifyUserOnline: invalid uid={}", uid);
+        reply->set_error(ErrorCodes::UID_INVALID);
+        return Status::OK;
+    }
+
+    // 异步通知 GateServer 刷新 session TTL（失败不阻塞回复）
+    notifyGateUserOnline(uid);
+
+    reply->set_error(ErrorCodes::SUCCESS);
+
+    const auto cost_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                             std::chrono::steady_clock::now() - start)
+                             .count();
+    Log::info(LogModule::Grpc, "NotifyUserOnline: uid={} cost={}ms", uid, cost_ms);
     return Status::OK;
 }
 

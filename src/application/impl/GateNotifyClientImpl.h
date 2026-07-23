@@ -22,6 +22,11 @@ public:
     /// @return 是否通知成功
     bool notifyUserOffline(int uid) override;
 
+    /// 通知 GateServer 用户已重新上线（刷新 session TTL）
+    /// @param uid 用户 ID
+    /// @return 是否通知成功
+    bool notifyUserOnline(int uid) override;
+
 private:
     std::unique_ptr<message::GateNotifyService::Stub> _stub;
 };

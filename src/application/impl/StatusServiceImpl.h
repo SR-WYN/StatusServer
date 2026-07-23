@@ -32,6 +32,8 @@ using message::LogoutRsp;
 using message::RefreshTokenTTLReq;
 using message::RefreshTokenTTLRsp;
 using message::RegisterNodeReq;
+using message::UserOnlineReq;
+using message::UserOnlineRsp;
 using message::RegisterNodeRsp;
 using message::StatusService;
 using message::UnbindUserReq;
@@ -92,6 +94,10 @@ public:
     Status RefreshTokenTTL(ServerContext *context, const RefreshTokenTTLReq *request,
                            RefreshTokenTTLRsp *reply) override;
 
+    // ChatServer 调用：通知 GateServer 用户重新上线，刷新 HTTP session TTL
+    Status NotifyUserOnline(ServerContext *context, const UserOnlineReq *request,
+                            UserOnlineRsp *reply) override;
+
     // FileServer 调用：验证 Token 有效性
     Status ValidateToken(ServerContext *context, const ValidateTokenReq *request,
                          ValidateTokenRsp *reply) override;
@@ -110,6 +116,9 @@ private:
 
     // 异步通知 GateServer 清理用户 session
     void notifyGateUserOffline(int uid);
+
+    // 异步通知 GateServer 刷新用户 session TTL
+    void notifyGateUserOnline(int uid);
 
     // 节点注册中心接口（通过依赖注入传入）
     std::shared_ptr<NodeRegistry> _registry;

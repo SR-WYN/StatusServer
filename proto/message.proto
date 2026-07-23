@@ -153,8 +153,17 @@ message UserOfflineRsp {
   int32 error = 1;
 }
 
+message UserOnlineReq {
+  int32 uid = 1;
+}
+
+message UserOnlineRsp {
+  int32 error = 1;
+}
+
 service GateNotifyService {
   rpc NotifyUserOffline(UserOfflineReq) returns (UserOfflineRsp);
+  rpc NotifyUserOnline(UserOnlineReq) returns (UserOnlineRsp);
 }
 
 service StatusService {
@@ -170,6 +179,7 @@ service StatusService {
   rpc DeleteFileToken(DeleteFileTokenReq) returns (DeleteFileTokenRsp);
   rpc RefreshTokenTTL(RefreshTokenTTLReq) returns (RefreshTokenTTLRsp);
   rpc Logout(LogoutReq) returns (LogoutRsp);
+  rpc NotifyUserOnline(UserOnlineReq) returns (UserOnlineRsp);
 }
 
 message AddFriendReq {

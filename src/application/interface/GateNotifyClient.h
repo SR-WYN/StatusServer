@@ -12,4 +12,9 @@ public:
     /// @param uid 用户 ID
     /// @return 是否通知成功
     virtual bool notifyUserOffline(int uid) = 0;
+
+    /// 通知 GateServer 用户已重新上线（刷新 session TTL）
+    /// @param uid 用户 ID
+    /// @return 是否通知成功
+    virtual bool notifyUserOnline(int uid) = 0;
 };
