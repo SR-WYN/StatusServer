@@ -13,7 +13,6 @@ constexpr const char *kUserTokenLookupPrefix = "utoken_";
 constexpr const char *kFileTokenPrefix = "ftoken_";
 constexpr const char *kIpCountPrefix = "ipcount_";
 constexpr const char *kUserBaseInfoPrefix = "ubaseinfo_";
-constexpr const char *kLoginCountKey = "logincount";
 constexpr const char *kRegisteredNodesKey = "registered_nodes";
 constexpr const char *kUserNodePrefix = "user_node_";
 constexpr const char *kNodeUsersPrefix = "node_users_";

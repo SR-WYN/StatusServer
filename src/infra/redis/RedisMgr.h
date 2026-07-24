@@ -41,6 +41,7 @@ public:
     bool sAdd(const std::string &key, const std::string &member);
     bool sRem(const std::string &key, const std::string &member);
     bool sMembers(const std::string &key, std::vector<std::string> &members);
+    long long sCard(const std::string &key);
 
     // Pub/Sub 操作
     bool publish(const std::string &channel, const std::string &message);

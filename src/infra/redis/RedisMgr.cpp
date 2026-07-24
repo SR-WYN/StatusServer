@@ -384,6 +384,22 @@ bool RedisMgr::sMembers(const std::string &key, std::vector<std::string> &member
     }
 }
 
+long long RedisMgr::sCard(const std::string &key)
+{
+    RedisLogGuard guard("SCARD", key);
+    try
+    {
+        auto count = _redis->scard(key);
+        Log::debug(LogModule::Redis, "SCARD {} count={}", key, count);
+        return static_cast<long long>(count);
+    }
+    catch (const sw::redis::Error &e)
+    {
+        Log::error(LogModule::Redis, "SCARD {} failed: {}", key, e.what());
+        return 0;
+    }
+}
+
 bool RedisMgr::publish(const std::string &channel, const std::string &message)
 {
     RedisLogGuard guard("PUBLISH", channel);
